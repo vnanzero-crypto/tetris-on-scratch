@@ -18,6 +18,8 @@ THEME_PALETTES += [
 ]
 THEME_NAMES.append('Beeswarm Sim Theme')
 THEME_PALETTES.append(['#f8d978','#7dc4e9','#ed9a65','#fff0a2','#92d58a','#b49ce2','#e98f9c'])
+THEME_NAMES.append('Binding of Isaac')
+THEME_PALETTES.append(['#9db6bf','#8580a6','#ca805c','#d9bf83','#91a48c','#bd647e','#da5d60'])
 COLORS = THEME_PALETTES[0]
 
 
@@ -49,6 +51,11 @@ def block(c, ghost=False, theme=1):
     elif theme == 5:
         body = rect(.5, .5, 15, 15, '#101427', c, extra='stroke-width="1"') + rect(2, 2, 12, 12, c, extra='fill-opacity=".6"')
         body += f'<path d="M3 4H12 M3 11V4" stroke="{c}" stroke-width=".8" fill="none"/>'
+    elif theme == 12:
+        # Chipped dungeon stones with a small etched tear, never a copied tile.
+        body = f'<path d="M2 .5H13L15.5 3V12.5L12.8 15.5H2.5L.5 13V3Z" fill="{c}" stroke="#35232d" stroke-width=".7"/>'
+        body += '<path d="M2.5 12.5V3H12.5 M3.5 1.5L5 4L3.6 6 M13.5 8L11.7 9.4L13 12.4" fill="none" stroke="#f2e9d7" stroke-opacity=".25" stroke-width=".7"/>'
+        body += '<path d="M8 4C7 6 5.5 7.3 5.5 9A2.5 2.5 0 0 0 10.5 9C10.5 7.3 9 6 8 4Z" fill="#291e2a" opacity=".28"/><path d="M7.2 8Q6.2 9 7.1 10" fill="none" stroke="#fff2da" opacity=".3" stroke-width=".6"/>'
     else:
         body = rect(.3, .3, 15.4, 15.4, c)
         body += '<path d="M.3 15.7H15.7V.3" stroke="#000" stroke-opacity=".28" stroke-width=".8" fill="none"/><path d="M.5 15V.5H15" stroke="#fff" stroke-opacity=".3" stroke-width=".6" fill="none"/>'
@@ -192,9 +199,56 @@ def _pine(x, y, scale=1, color='#0b2330'):
     return f'<g transform="translate({x} {y}) scale({scale})"><path d="M0 0L-8 14H-4L-12 26H-6L-15 39H15L6 26H12L4 14H8Z" fill="{color}"/><path d="M-1 37H1V45H-1Z" fill="{color}"/></g>'
 
 
+def _isaac_landscape():
+    """Original candlelit stone basement with a dark, readable central chamber."""
+    b = [rect(0,0,480,360,'#18151d'),
+         '<defs><radialGradient id="dungeon-glow"><stop stop-color="#a33e42" stop-opacity=".23"/><stop offset="1" stop-color="#3a1727" stop-opacity="0"/></radialGradient><radialGradient id="candle-glow"><stop stop-color="#f3a25f" stop-opacity=".3"/><stop offset="1" stop-color="#b44940" stop-opacity="0"/></radialGradient><linearGradient id="dungeon-floor" x2="0" y2="1"><stop stop-color="#201c25"/><stop offset="1" stop-color="#0e1019"/></linearGradient></defs>',
+         rect(0,0,480,57,'#242029'),rect(0,0,27,360,'#28212b'),rect(453,0,27,360,'#28212b'),
+         rect(27,57,426,303,'url(#dungeon-floor)'),
+         '<ellipse cx="240" cy="188" rx="240" ry="190" fill="url(#dungeon-glow)"/>']
+    # Uneven, hand-laid wall masonry frames the stage rather than the well.
+    for row in range(3):
+        y=row*19
+        for col in range(11):
+            x=col*49-(24 if row%2 else 0)
+            b += [rect(x+1,y+1,46,17,['#302733','#29232e','#352a34'][(row+col)%3],'#12121b',2,extra='stroke-width="1.2"'),
+                  f'<path d="M{x+5} {y+4}H{x+39}" stroke="#8c6d74" stroke-opacity=".14" stroke-width=".7"/>']
+    for side in (0,453):
+        for row in range(3,19):
+            y=row*19
+            b += [rect(side+1,y+1,25,17,'#2c242e' if row%2 else '#251f29','#15131d',2,extra='stroke-width="1"'),
+                  f'<path d="M{side+4} {y+3}H{side+22}" stroke="#8c6d74" stroke-opacity=".14" stroke-width=".6"/>']
+    b += ['<path d="M27 58V360 M453 58V360 M27 58H453" fill="none" stroke="#090c14" stroke-width="4"/>',
+          '<path d="M35 65H445 M35 65V354 M445 65V354" fill="none" stroke="#79606e" stroke-opacity=".17" stroke-width=".7"/>',
+          '<path d="M102 360L148 57 M378 360L332 57 M27 138H453 M27 229H453 M27 326H453" fill="none" stroke="#a87b7a" stroke-opacity=".045" stroke-width="1"/>']
+    # Closed stone doorway and a crimson seal above it.
+    b += [rect(204,5,72,47,'#13131c','#46313a',3,extra='stroke-width="1.5"'),
+          '<path d="M211 51V19Q240-4 269 19V51" fill="none" stroke="#68505a" stroke-width="5"/>',
+          '<circle cx="240" cy="28" r="11" fill="#241a25" stroke="#aa535e" stroke-width=".8"/>',
+          '<path d="M236 20V35 M244 20V35 M233 27H247 M240 27V39" fill="none" stroke="#db7273" stroke-width="1.3"/>']
+    # Sconce flames and halos sit in the side margins; the well stays dark.
+    for x,y in [(52,97),(428,97),(53,274),(427,274)]:
+        b += [f'<circle cx="{x}" cy="{y-9}" r="34" fill="url(#candle-glow)"/>',
+              rect(x-5,y+4,10,13,'#5a3b3e','#8b5555',2,extra='stroke-width=".6"'),
+              f'<path d="M{x-7} {y+6}Q{x} {y+12} {x+7} {y+6}" fill="none" stroke="#ad7560" stroke-width="2"/>',
+              rect(x-2,y-7,4,13,'#c59874',r=1),
+              f'<path d="M{x} {y-20}C{x-2} {y-14} {x-6} {y-11} {x-3} {y-7}Q{x} {y-4} {x+3} {y-8}C{x+6} {y-12} {x+1} {y-16} {x} {y-20}Z" fill="#ea8d53"/>',
+              f'<path d="M{x} {y-14}Q{x-3} {y-9} {x} {y-7}Q{x+3} {y-9} {x} {y-14}Z" fill="#ffe0a0"/>']
+    # Dust, cracks, and chalk symbols provide original Isaac-like scenery.
+    b += ['<path d="M76 164L84 174L78 185L92 192 M394 204L402 214L397 223L410 235 M83 318L101 324L107 337 M379 86L386 78L400 80" fill="none" stroke="#0c0e16" stroke-width="2"/>',
+          '<g fill="none" stroke="#b25b68" stroke-opacity=".3" stroke-width=".8"><circle cx="91" cy="245" r="19"/><path d="M91 226L102 260L73 239H109L80 260Z"/><circle cx="389" cy="159" r="15"/><path d="M384 148V168 M394 148V168 M380 155H398 M389 155V175"/></g>',
+          '<path d="M64 343Q70 339 76 343L80 341L82 344L79 347L76 346Q70 350 64 347L61 349L58 346L61 343Z M404 320Q411 317 417 320L421 318L423 321L419 324L416 323Q409 327 404 324L401 326L398 323L401 320Z" fill="#8d7e79" opacity=".32"/>']
+    for i in range(30):
+        x=(i*97+39)%424+28;y=(i*43+72)%280+65
+        b.append(f'<circle cx="{x}" cy="{y}" r="{.35+(i%3)*.15}" fill="#b59a92" opacity="{.08+(i%4)*.025:.3f}"/>')
+    return svg(''.join(b))
+
+
 def landscape(theme=1):
     """Full-stage 480x360 original landscape, selected independently of camera shake."""
-    theme = max(1, min(11, int(theme)))
+    theme = max(1, min(12, int(theme)))
+    if theme == 12:
+        return _isaac_landscape()
     if theme == 11:
         from expansion_art import beeswarm_landscape
         return beeswarm_landscape()
@@ -302,7 +356,7 @@ def landscape(theme=1):
 
 def menu(theme=1, resume=False):
     """Asymmetric flight-console menu; the engine stamps the hover object at right."""
-    theme = max(1, min(11, int(theme)))
+    theme = max(1, min(12, int(theme)))
     accent = THEME_PALETTES[theme-1][5]
     b = [
         '<defs><linearGradient id="menu-veil"><stop stop-color="#060912" stop-opacity=".98"/><stop offset=".62" stop-color="#080c17" stop-opacity=".86"/><stop offset="1" stop-color="#080c17" stop-opacity=".18"/></linearGradient></defs>',
@@ -417,8 +471,8 @@ def _back_button():
 
 
 def theme_menu(theme=1):
-    """Eleven independently illustrated cards; root owns selection input."""
-    theme = max(1,min(11,int(theme)))
+    """Twelve independently illustrated cards; root owns selection input."""
+    theme = max(1,min(12,int(theme)))
     b = [rect(0,0,480,360,'#070b16',extra='fill-opacity=".93"'),_back_button(),
          text(240,64,'CHOOSE YOUR WORLD',22,'#f2f3fc',200,'text-anchor="middle" letter-spacing="2.3"')]
     for i,name in enumerate(THEME_NAMES,1):
@@ -487,9 +541,9 @@ def hover_outline(kind):
             x,y,w,h=16,16,84,26
         elif kind in (6,7):
             x,y,w,h=(96 if kind==6 else 284),288,100,28
-        elif 11<=kind<=20:
+        elif 11<=kind<=22:
             i=kind-11
-            x,y,w,h=10+(i%5)*94,94+(i//5)*74,84,66
+            x,y,w,h=11+(i%4)*116,85+(i//4)*70,108,64
             c=THEME_PALETTES[i][5]
         else:
             return svg('')
@@ -673,6 +727,29 @@ def hover_object(kind,frame=0):
               '<path d="M20 35L15 32 M60 11V5 M101 80L107 83 M26 84L21 87" stroke="#a3d8ea" stroke-width=".65"/>']
         for x,y in [(60,18),(94,37),(94,78),(60,98),(26,78),(26,37),(60,57)]:
             b.append(f'<circle cx="{x}" cy="{y}" r="1.9" fill="#d9f5ff"/>')
+    elif kind==21:
+        from expansion_art import bee
+        art=bee(1,frame%4)
+        art=art[art.index('>')+1:art.rfind('</svg>')]
+        b += ['<ellipse cx="60" cy="83" rx="39" ry="12" fill="none" stroke="#d3bd69" stroke-opacity=".3" stroke-width=".7"/>',
+              '<path d="M25 29L33 24L41 29V38L33 43L25 38Z M88 77L95 73L102 77V85L95 89L88 85Z" fill="none" stroke="#edcd80" stroke-opacity=".55" stroke-width=".8"/>',
+              f'<g transform="translate(12 24) scale(2)">{art}</g>',
+              _object_glint(88,26,3,'#ffe3a3')]
+    elif kind==22:
+        # Original horned stone familiar with an animated crimson brimstone ring.
+        b += ['<ellipse cx="60" cy="91" rx="36" ry="12" fill="#761f38" fill-opacity=".14" stroke="#c65c73" stroke-opacity=".55" stroke-width=".7"/>',
+              '<path d="M24 91H96 M33 84L87 98 M33 98L87 84" fill="none" stroke="#d27481" stroke-opacity=".32" stroke-width=".6"/>',
+              '<path d="M37 48Q23 37 31 17Q35 31 47 31 M83 48Q97 37 89 17Q85 31 73 31" fill="#4a3444" stroke="#b37989" stroke-width=".7"/>',
+              '<path d="M40 45Q60 28 80 45L85 66Q80 84 60 85Q40 84 35 66Z" fill="#99888d" stroke="#d4b9bc" stroke-width=".8"/>',
+              '<path d="M40 45Q60 32 79 45L73 48L60 43L46 49Z" fill="#bdacac" opacity=".65"/>',
+              '<path d="M46 57Q50 54 54 59L53 64H47Z M74 57Q70 54 66 59L67 64H73Z" fill="#2b1b2d"/>',
+              '<path d="M47 62V73 M72 62V73" stroke="#772c49" stroke-width="1.3" opacity=".75"/>',
+              '<ellipse cx="60" cy="72" rx="5" ry="6" fill="#451c32" stroke="#d5667a" stroke-width=".7"/>',
+              '<path d="M46 83Q41 91 47 96H54L58 87 M74 83Q79 91 73 96H66L62 87" fill="#7c6976" stroke="#be9eac" stroke-width=".6"/>']
+        pulse=3+frame%4
+        b += [f'<path d="M22 108Q60 {96-pulse} 98 108" fill="none" stroke="#a12b49" stroke-width="{5+frame%3}" stroke-opacity=".4"/>',
+              f'<path d="M22 108Q60 {96-pulse} 98 108" fill="none" stroke="#f2758c" stroke-width="1.7"/>',
+              _object_glint(25,66,3,'#f3a5a7'),_object_glint(98,40,2,'#e7bdc1')]
     else:
         return svg('',120,120)
     # A tiny orbiting pin gives all eight costumes a visible, restrained motion.

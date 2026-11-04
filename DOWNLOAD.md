@@ -10,7 +10,7 @@ The older `stack-flow.sb3` link contains the same game. To update an older copy 
 
 ## Controls and menus
 
-**A/D or Left/Right** move · **S or Down** soft drop · **W or Up** rotate · **Z** rotates the other way · **Space** hard drops · **C** holds · **R** opens the new-run picker.
+**A/D or Left/Right** move · **S or Down** soft drop · **W or Up** rotate · **Z** rotates the other way · **Space** hard drops with falling dash trails · **C** holds · **R** opens the new-run picker.
 
 Press **M** or click **Menu** to pause and return to the main menu. **Resume** continues the same run immediately. **New Run** asks for a difficulty before restarting. The combo timer pauses in the menu.
 
@@ -18,7 +18,14 @@ Press **M** or click **Menu** to pause and return to the main menu. **Resume** c
 
 **RGB / Rainbow** in Cosmetics opens independent game-accent and key-highlight colors. Use the sliders, type exact RGB channel values, or choose animated Rainbow for either. **Settings** includes your name, shake intensity/Off, and preferred difficulty.
 
-**Themes** has eleven unique looks, including **Beeswarm Sim Theme**. Each line cleared adds a flying bee, up to ten, along the edges outside gameplay. Choose a card, use **1–9 / 0 / B**, or press **T** to cycle inside the gallery.
+All clickable controls light up on hover. Theme hover outlines match the four-column gallery, and the animated preview sits below the cards.
+
+**Themes** has twelve unique looks. Choose a card, use **1–9 / 0 / B / I**, or press **T** to cycle inside the gallery.
+
+- **Beeswarm Sim Theme (B):** Each line adds a bee, up to ten, with independent random flight around the protected board. Every clear grants a random cosmetic buff: Bomb Honey, Flower Honey, Bubble Pollen, or Blue Haste. Badges stack at the top left, show a name on hover, and fade when they expire. Repeated buffs increase the count and refresh the badge.
+- **Binding of Isaac (I):** Each line adds a familiar, up to ten, roaming outside gameplay. Clears trigger a red-and-white brimstone beam with runes and sparks.
+
+The bees, familiars, buffs, and trails are visual effects. They leave scores, movement, gravity, and collisions unchanged. Starting a new run resets companions and buff stacks.
 
 ## Keep your scores and preferences
 

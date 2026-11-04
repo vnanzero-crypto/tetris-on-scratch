@@ -131,7 +131,7 @@ proc('update camera',[setv('shake x',0),setv('shake y',0),If(gt(V('shake ticks')
  If(eq(mod(V('shake ticks'),2),0),[setv('shake x',V('shake amount'))],[setv('shake x',sub(0,V('shake amount')))]),
  If(eq(mod(V('shake ticks'),3),0),[setv('shake y',mul(V('shake amount'),-.5))],[setv('shake y',mul(V('shake amount'),.5))]),change('shake ticks',-1)])])
 proc('apply theme',[B('looks_switchbackdropto',{'BACKDROP':inp(join('theme',V('THEME')))})])
-proc('next theme',[setv('THEME',add(mod(V('THEME'),11),1)),call('apply theme')])
+proc('next theme',[setv('THEME',add(mod(V('THEME'),12),1)),call('apply theme')])
 
 history_columns=['run ids','run scores','run lines','run combos','run themes','run status','run difficulties']
 proc('checkpoint run',[If(eq(V('run record open'),1),[
@@ -171,7 +171,7 @@ proc('detect spin',[setv('t spin',0),setv('corners',0),
   If(gt(V('corners'),2),[setv('t spin',1)])])])
 
 # All effects are native Scratch pen stamps; their state expires after 24 frames.
-proc('start clear fx',[clear('clear rows'),setv('fx row',1),repeat(length('pending clear rows'),[
+proc('start clear fx',[setv('fx style',V('CLEAR EFFECT')),If(eq(V('THEME'),12),[setv('fx style',11)]),clear('clear rows'),setv('fx row',1),repeat(length('pending clear rows'),[
  append('clear rows',item('pending clear rows',V('fx row'))),change('fx row',1)]),
  setv('shake ticks',10),setv('fx active',1),setv('fx age',0),clear('particle x'),clear('particle y'),clear('particle vx'),clear('particle vy'),
  setv('fx row',1),repeat(length('clear rows'),[setv('fx y',sub(152,mul(item('clear rows',V('fx row')),16))),repeat(12,[
@@ -185,7 +185,7 @@ proc('lock',[call('detect spin'),setv('shape',shape(V('piece'),V('rotation'))),s
  change('LINES',V('cleared')),change('lifetime lines',V('cleared')),If(eq(V('CLEAR EFFECT'),5),[change('rainbow lines',V('cleared'))]),If(eq(V('THEME'),11),[change('beeswarm lines',V('cleared'))]),If(eq(V('cleared'),4),[change('lifetime quads',1)]),If(eq(V('t spin'),1),[change('lifetime spins',1)]),setv('awarded',0),
  If(eq(V('t spin'),1),[setv('awarded',mul(item('spin points',add(V('cleared'),1)),V('LEVEL'))),setv('notification','tspin'),setv('flash',42)],
  [If(gt(V('cleared'),0),[setv('awarded',mul(item('points',V('cleared')),V('LEVEL'))),setv('notification',join('clear',V('cleared'))),setv('flash',36)])]),
- change('SCORE',V('awarded')),If(gt(V('cleared'),0),[call('clear combo'),change('SCORE',V('combo bonus')),call('start clear fx')]),
+ change('SCORE',V('awarded')),If(gt(V('cleared'),0),[call('clear combo'),change('SCORE',V('combo bonus')),call('start clear fx'),call('grant bee buff')]),
  setv('LEVEL',add(floor(div(V('LINES'),10)),1)),setv('can hold',1),call('check achievements'),call('spawn')])
 proc('hold',[If(eq(V('can hold'),1),[setv('swap',V('HOLD')),setv('HOLD',V('piece')),If(eq(V('swap'),0),[call('spawn')],[
  setv('piece',V('swap')),setv('x',3),setv('y',0),setv('rotation',0),setv('last rotation',0),setv('fall',0),setv('ground ticks',0),setv('tx',3),setv('ty',0),setv('tr',0),call('test position'),
@@ -201,16 +201,16 @@ proc('draw raw number',[resize({'SIZE':inp(V('number scale'))}),setv('number tex
  change('digit index',1),B('motion_gotoxy',{'X':inp(V('number x')),'Y':inp(V('number y'))}),B('looks_switchcostumeto',{'COSTUME':inp(join('digit',R('operator_letter_of',LETTER=V('digit index'),STRING=V('number text'))))}),B('pen_stamp'),change('number x',V('number spacing'))])])
 proc('draw clear fx',[If(eq(V('fx active'),1),[
  If(lt(V('fx age'),20),[If(either(eq(length('clear rows'),4),eq(V('notification'),'tspin')),[setv('fx beam','quadbeam')],[setv('fx beam','beam')]),setv('fx row',1),repeat(length('clear rows'),
- stamp(0,sub(152,mul(item('clear rows',V('fx row')),16)),join(join('element',V('CLEAR EFFECT')),join('-',floor(div(V('fx age'),2)))))+[change('fx row',1)])]),
+ stamp(0,sub(152,mul(item('clear rows',V('fx row')),16)),join(join('element',V('fx style')),join('-',floor(div(V('fx age'),2)))))+[change('fx row',1)])]),
  effect('GHOST',mul(V('fx age'),4)),setv('particle',1),repeat(length('particle x'),[
  replace('particle x',V('particle'),add(item('particle x',V('particle')),item('particle vx',V('particle')))),
  replace('particle y',V('particle'),add(item('particle y',V('particle')),item('particle vy',V('particle')))),
  replace('particle vy',V('particle'),sub(item('particle vy',V('particle')),.28)),
  If(both(both(gt(item('particle x',V('particle')),-78),lt(item('particle x',V('particle')),78)),both(gt(item('particle y',V('particle')),-158),lt(item('particle y',V('particle')),158))),
- stamp(item('particle x',V('particle')),item('particle y',V('particle')),join('element spark',V('CLEAR EFFECT')))),change('particle',1)]),B('looks_cleargraphiceffects'),change('fx age',1),
+ stamp(item('particle x',V('particle')),item('particle y',V('particle')),join('element spark',V('fx style')))),change('particle',1)]),B('looks_cleargraphiceffects'),change('fx age',1),
  If(gt(V('fx age'),23),[setv('fx active',0)])])])
 
-render=[setv('block prefix',join('t',V('THEME'))),If(gt(V('BLOCK SKIN'),1),[setv('block prefix',join('skin',V('BLOCK SKIN')))]),setv('number spacing',14),call('update combo'),call('update camera'),B('pen_clear'),call('draw ambient'),resize({'SIZE':inp(ZOOM*100)})]+stamp(0,0,'interface')+[call('draw game accent'),If(gt(V('AURA'),0),stamp(0,0,join(join('aura',V('AURA')),join('-',mod(floor(mul(timer(),8)),8)))))]+[setv('i',1),repeat(200,[If(gt(item('board',V('i')),0),block_stamp(add(-72,mul(mod(sub(V('i'),1),10),16)),sub(152,mul(floor(div(sub(V('i'),1),10)),16)),item('board',V('i')))),change('i',1)]),
+render=[setv('block prefix',join('t',V('THEME'))),If(gt(V('BLOCK SKIN'),1),[setv('block prefix',join('skin',V('BLOCK SKIN')))]),setv('number spacing',14),call('update combo'),call('update camera'),B('pen_clear'),call('draw ambient'),resize({'SIZE':inp(ZOOM*100)})]+stamp(0,0,'interface')+[call('draw game accent'),If(gt(V('AURA'),0),stamp(0,0,join(join('aura',V('AURA')),join('-',mod(floor(mul(timer(),8)),8))))),call('draw drop dash')]+[setv('i',1),repeat(200,[If(gt(item('board',V('i')),0),block_stamp(add(-72,mul(mod(sub(V('i'),1),10),16)),sub(152,mul(floor(div(sub(V('i'),1),10)),16)),item('board',V('i')))),change('i',1)]),
  setv('ghost',V('y')),setv('valid',1),until(eq(V('valid'),0),[setv('tx',V('x')),setv('ty',add(V('ghost'),1)),setv('tr',V('rotation')),call('test position'),If(eq(V('valid'),1),[change('ghost',1)])]),
  setv('draw style',7),setv('draw y',V('ghost')),call('draw piece'),setv('draw style',0),setv('draw y',V('y')),call('draw piece'),
  resize({'SIZE':inp(70*ZOOM)}),If(gt(V('HOLD'),0),[setv('mini piece',V('HOLD')),setv('mini x',-180),setv('mini y',38),call('mini')]),
@@ -222,7 +222,7 @@ proc('draw combo',[
  resize({'SIZE':inp(mul(100*ZOOM,V('combo scale')))}),setv('number spacing',14),setv('number value',V('COMBO')),setv('number digits',2),setv('number x',-136),setv('number y',120),call('draw number'),resize({'SIZE':inp(100*ZOOM)}),
  If(gt(V('COMBO'),0),[setv('combo title',V('COMBO')),If(gt(V('combo title'),15),[setv('combo title',15)])]+stamp(-161,100,join('title',V('combo title')))+[
  resize({'SIZE':inp(100*ZOOM)}),If(eq(V('combo animating'),1),[change('combo pulse',1),If(gt(V('combo pulse'),23),[setv('combo animating',0)])])])])
-render += [call('draw clear fx'),If(gt(V('flash'),0),[change('flash',-1)]+stamp(-161,78,V('notification'))),call('draw combo'),call('draw combo timer'),call('draw bees')]
+render += [call('draw clear fx'),If(gt(V('flash'),0),[change('flash',-1)]+stamp(-161,78,V('notification'))),call('draw combo'),call('draw combo timer'),call('draw companions'),call('draw bee tokens'),call('draw bee buffs')]
 # Optional exact RGB pen fill below the white arrow glyph, independent of theme colors.
 for arrow,k,x,y in [('↑','w',160,-40),('←','a',118,-70),('↓','s',160,-70),('→','d',202,-70)]:
  render += [If(both(gt(V('key custom'),0),held(k)),segment(x-7,y,x+7,y,packed('key'),22*ZOOM,True)+stamp(x,y,'arrow glyph'+k),stamp(x,y,join('arrow'+k+'-',held(k))))]
@@ -243,12 +243,12 @@ history_render=[B('pen_clear'),call('draw ambient'),resize({'SIZE':inp(100)})]+r
  setv('number value',V('history pages')),setv('number digits',1),setv('number scale',55),setv('number spacing',8),setv('number x',8),setv('number y',-123),call('draw raw number')]
 proc('render history',history_render)
 proc('render',[call('update hover'),If(eq(V('SCREEN'),'play'),[call('render game')],[If(eq(V('SCREEN'),'themes'),[call('render themes')],[If(eq(V('SCREEN'),'history'),[call('render history')],[call('render menu')])])]),call('draw hover')])
-proc('reset',[call('init profile'),call('apply difficulty'),If(either(lt(V('THEME'),1),gt(V('THEME'),11)),[setv('THEME',1)]),call('apply theme'),setv('COMBO',0),setv('combo expires',0),setv('combo bonus',0),setv('run max combo',0),setv('combo pulse',0),setv('combo animating',0),setv('shake ticks',0),setv('shake x',0),setv('shake y',0),clear('board'),repeat(200,[append('board',0)]),clear('bag'),clear('clear rows'),setv('fx active',0),setv('fx age',0),setv('flash',0),
+proc('reset',[call('init profile'),call('apply difficulty'),If(either(lt(V('THEME'),1),gt(V('THEME'),12)),[setv('THEME',1)]),call('apply theme'),call('init companions'),call('reset bee buffs'),setv('dash active',0),setv('dash age',0),setv('COMBO',0),setv('combo expires',0),setv('combo bonus',0),setv('run max combo',0),setv('combo pulse',0),setv('combo animating',0),setv('shake ticks',0),setv('shake x',0),setv('shake y',0),clear('board'),repeat(200,[append('board',0)]),clear('bag'),clear('clear rows'),setv('fx active',0),setv('fx age',0),setv('flash',0),
  setv('SCORE',0),setv('LINES',0),setv('LEVEL',1),setv('HOLD',0),setv('GAME OVER',0),setv('can hold',1),setv('left ticks',0),setv('right ticks',0),
  setv('z previous',0),setv('w previous',0),setv('space previous',0),setv('c previous',0),call('spawn')])
 def edge(k,prev,ss):return [If(both(held(k),eq(V(prev),0)),ss),setv(prev,held(k))]
 def sideways(k,t,dx):return If(held(k),[change(t,1),If(either(eq(V(t),1),both(gt(V(t),9),eq(mod(V(t),2),0))),[setv('dx',dx),setv('dy',0),call('move')])],[setv(t,0)])
-proc('hard drop',[change('lifetime drops',1),setv('valid',1),until(eq(V('valid'),0),[setv('dx',0),setv('dy',1),call('move'),If(eq(V('valid'),1),[change('SCORE',2)])]),call('lock')])
+proc('hard drop',[setv('dash active',1),setv('dash age',0),change('lifetime drops',1),setv('valid',1),until(eq(V('valid'),0),[setv('dx',0),setv('dy',1),call('move'),If(eq(V('valid'),1),[change('SCORE',2)])]),call('lock')])
 active=[sideways('a','left ticks',-1),sideways('d','right ticks',1)]
 active+=edge('w','w previous',[setv('turn',1),call('rotate')])+edge('z','z previous',[setv('turn',3),call('rotate')])+edge('c','c previous',[call('hold')])+edge('space','space previous',[call('hard drop')])
 active += [change('fall',1),If(either(both(held('s'),eq(mod(V('fall'),2),0)),gt(V('fall'),div(V('gravity base'),V('LEVEL')))),[
@@ -270,11 +270,11 @@ proc('show history',[setv('history page',0),setv('SCREEN','history')])
 menu_keys=edge('t','t previous',[call('show themes')])+edge('h','h previous',[call('show history')])
 menu_keys+=edge('space','space previous',[If(both(eq(V('has game'),1),eq(V('GAME OVER'),0)),[call('resume game')],[call('choose difficulty')])])+edge('n','n previous',[call('choose difficulty')])
 theme_keys=edge('t','t previous',[call('next theme')])
-for theme in range(1,12):
- theme_keys+=edge(str(theme%10) if theme<11 else 'b','theme key '+str(theme),[setv('THEME',theme),call('apply theme')])
+for theme in range(1,13):
+ theme_keys+=edge(str(theme%10) if theme<11 else ('b' if theme==11 else 'i'),'theme key '+str(theme),[setv('THEME',theme),call('apply theme')])
 menu_clicks=[If(hit(32,112,246,150),[If(both(eq(V('has game'),1),eq(V('GAME OVER'),0)),[call('resume game')],[call('choose difficulty')])]),If(hit(32,162,246,192),[call('choose difficulty')]),If(hit(32,204,246,234),[call('show themes')]),If(hit(32,246,246,276),[call('show history')])]
 theme_clicks=[If(hit(16,16,100,42),[setv('SCREEN','menu')])]
-for theme in range(1,12):
+for theme in range(1,13):
  col=(theme-1)%4;row=(theme-1)//4;left=12+col*116;top=86+row*70
  theme_clicks += [If(hit(left,top,left+106,top+62),[setv('THEME',theme),call('apply theme')])]
 history_clicks=[If(hit(16,16,100,42),[setv('SCREEN','menu')]),If(both(hit(96,288,196,316),gt(V('history page'),0)),[change('history page',-1)]),If(both(hit(284,288,384,316),lt(mul(add(V('history page'),1),5),length('run ids'))),[change('history page',1)])]
@@ -283,7 +283,7 @@ hover_menu=[]
 for kind,box in [(1,(32,112,246,150)),(2,(32,162,246,192)),(3,(32,204,246,234)),(4,(32,246,246,276))]:
  hover_menu += [If(hit(*box),[setv('hover object',kind)])]
 hover_themes=[If(hit(16,16,100,42),[setv('hover object',5)])]
-for theme in range(1,12):
+for theme in range(1,13):
  left=12+((theme-1)%4)*116;top=86+((theme-1)//4)*70
  hover_themes += [If(hit(left,top,left+106,top+62),[setv('hover object',theme+10)])]
 hover_history=[If(hit(16,16,100,42),[setv('hover object',5)]),If(hit(96,288,196,316),[setv('hover object',6)]),If(hit(284,288,384,316),[setv('hover object',7)])]
@@ -291,7 +291,7 @@ proc('update hover',[setv('hover object',0),If(eq(V('SCREEN'),'menu'),hover_menu
 proc('draw hover',[If(gt(V('hover object'),0),[
  setv('hover frame',mod(floor(mul(timer(),8)),8)),resize({'SIZE':inp(100)})]+raw_stamp(0,0,join('outline',V('hover object')))+[
  setv('hover x',125),setv('hover y',-5),setv('hover size',100),
- If(eq(V('SCREEN'),'themes'),[setv('hover x',170),setv('hover y',-105),setv('hover size',65)]),
+ If(eq(V('SCREEN'),'themes'),[setv('hover x',188),setv('hover y',-144),setv('hover size',40)]),
  If(eq(V('SCREEN'),'history'),[setv('hover x',20),setv('hover y',120),setv('hover size',50)]),
  resize({'SIZE':inp(V('hover size'))})]+raw_stamp(V('hover x'),add(V('hover y'),mul(mathop('sin',mul(timer(),80)),3)),join(join('object',V('hover object')),join('-',V('hover frame')))))])
 clicks=[If(eq(V('SCREEN'),'menu'),menu_clicks,[If(eq(V('SCREEN'),'themes'),theme_clicks,[If(eq(V('SCREEN'),'history'),history_clicks,[If(hit(8,10,100,34),[call('open menu')])])])])]
@@ -328,7 +328,7 @@ proc('show achievements',[setv('achievement page',0),setv('hover object',0),call
 # Route extra pages before the ordinary render dispatcher, retaining its existing branches.
 render_def=next(k for k,b in blocks.items() if b['opcode']=='procedures_prototype' and b['mutation']['proccode']=='render')
 render_def=blocks[render_def]['parent'];old=blocks[render_def]['next']
-wrapper=seq([call('update rainbow'),If(eq(V('SCREEN'),'settings'),[call('render settings')],[If(eq(V('SCREEN'),'achievements'),[call('render achievements')],[If(eq(V('SCREEN'),'cosmetics'),[call('render cosmetics')],[If(eq(V('SCREEN'),'difficulty'),[call('render difficulty')],[old])])])]),
+wrapper=seq([call('update rainbow'),If(eq(V('SCREEN'),'settings'),[call('render settings')],[If(eq(V('SCREEN'),'achievements'),[call('render achievements')],[If(eq(V('SCREEN'),'cosmetics'),[call('render cosmetics')],[If(eq(V('SCREEN'),'difficulty'),[call('render difficulty')],[old])])])]),call('draw button hover'),
  If(either(eq(V('SCREEN'),'menu'),eq(V('SCREEN'),'history')),raw_text(V('PLAYER NAME'),120 if False else 32,350,60)),
  If(both(eq(item('unlocked',5),1),eq(V('SCREEN'),'menu')),[resize({'SIZE':inp(100)})]+raw_stamp(-58,-170,'spin title')),
  # Each page reserves a different gap for notices, clear of buttons and play cells.
@@ -394,18 +394,68 @@ for tab,options,variable,requirements,offset in [(1,10,'CLEAR EFFECT',EFFECT_REQ
 cosm_render += [If(gt(V('notice until'),timer()),[resize({'SIZE':inp(100)})]+raw_stamp(-220,-172,join('notice',V('settings notice'))))]
 proc('render cosmetics',cosm_render);proc('cosmetics click',cosm_clicks)
 proc('draw combo timer',[If(gt(V('COMBO'),0),segment(-110,145,110,145,0x28344a,7)+segment(-110,145,add(-110,mul(div(sub(V('combo expires'),timer()),4),220)),145,0xacecff,6)+[resize({'SIZE':inp(100)})]+raw_stamp(0,164,'combo timer caption'))])
-# Flock positions stay in the two outer edge bands, never on top of active cells.
-bee_flight=[
- setv('bee x',add(mul(sub(mul(mod(V('bee index'),2),2),1),215),mul(mathop('sin',add(mul(timer(),65),mul(V('bee index'),33))),8))),
- setv('bee y',add(sub(mul(floor(div(sub(V('bee index'),1),2)),52),104),mul(mathop('sin',add(mul(timer(),80),mul(V('bee index'),47))),10)))
-]+raw_stamp(V('bee x'),V('bee y'),join(join('bee',V('bee index')),join('-',mod(floor(mul(timer(),12)),4))))+[change('bee index',1)]
-bee_tokens=[resize({'SIZE':inp(70)})]
-for token,bx,by in [(1,-208,140),(3,208,-140),(4,208,140)]:
+# Independent random walks use the outer stage and the corridors above/below
+# the well. The protected rectangle includes max shake and the full sprite size.
+COMPANION_FIELDS=['companion '+field for field in ['x','y','vx','vy','turn']]
+def random_velocity():return mul(sub(mul(random(0,1),2),1),div(random(6,18),10))
+proc('init companions',[clear(name) for name in COMPANION_FIELDS]+[repeat(10,[
+ append('companion x',mul(sub(mul(random(0,1),2),1),random(104,218))),append('companion y',random(-162,162)),
+ append('companion vx',random_velocity()),append('companion vy',random_velocity()),append('companion turn',random(18,70))])])
+def protected(x,y):return both(lt(mathop('abs',x),96),lt(mathop('abs',y),150))
+step=[setv('flight x',item('companion x',V('companion index'))),setv('flight y',item('companion y',V('companion index'))),
+ If(either(either(gt(mathop('abs',V('flight x')),222),gt(mathop('abs',V('flight y')),164)),protected(V('flight x'),V('flight y'))),[
+ setv('flight x',mul(sub(mul(random(0,1),2),1),random(104,218))),setv('flight y',random(-162,162))]),
+ replace('companion turn',V('companion index'),sub(item('companion turn',V('companion index')),1)),
+ If(lt(item('companion turn',V('companion index')),1),[replace('companion vx',V('companion index'),random_velocity()),replace('companion vy',V('companion index'),random_velocity()),replace('companion turn',V('companion index'),random(18,70))]),
+ setv('flight next',add(V('flight x'),item('companion vx',V('companion index')))),
+ If(either(gt(mathop('abs',V('flight next')),222),protected(V('flight next'),V('flight y'))),[replace('companion vx',V('companion index'),sub(0,item('companion vx',V('companion index'))))],[setv('flight x',V('flight next'))]),
+ setv('flight next',add(V('flight y'),item('companion vy',V('companion index')))),
+ If(either(gt(mathop('abs',V('flight next')),164),protected(V('flight x'),V('flight next'))),[replace('companion vy',V('companion index'),sub(0,item('companion vy',V('companion index'))))],[setv('flight y',V('flight next'))]),
+ replace('companion x',V('companion index'),V('flight x')),replace('companion y',V('companion index'),V('flight y'))]
+proc('step companion',step)
+companion_loop=[call('step companion'),setv('bee x',V('flight x')),setv('bee y',V('flight y'))]+raw_stamp(V('flight x'),V('flight y'),join(join(V('companion prefix'),V('companion index')),join('-',mod(floor(add(mul(timer(),12),mul(V('companion index'),3))),4))))+[change('companion index',1)]
+valid_flock=eq(length(COMPANION_FIELDS[0]),10)
+for name in COMPANION_FIELDS[1:]:valid_flock=both(valid_flock,eq(length(name),10))
+scene=[If(neg(valid_flock),[call('init companions')]),setv('companion count',V('LINES')),
+ If(gt(V('companion count'),10),[setv('companion count',10)]),If(lt(V('companion count'),0),[setv('companion count',0)]),
+ setv('companion prefix','bee'),If(eq(V('THEME'),11),[setv('bee count',V('companion count')),If(gt(V('bee count'),V('max bees')),[setv('max bees',V('bee count'))])],[setv('companion prefix','familiar'),setv('familiar count',V('companion count'))]),
+ resize({'SIZE':inp(60)}),setv('companion index',1),repeat(V('companion count'),companion_loop),resize({'SIZE':inp(100*ZOOM)})]
+proc('draw companions',[setv('bee count',0),setv('familiar count',0),If(either(eq(V('THEME'),11),eq(V('THEME'),12)),scene)])
+proc('draw bees',[call('draw companions')])
+bee_tokens=[resize({'SIZE':inp(70)}),effect('GHOST',mul(V('fx age'),3))]
+for token,bx,by in [(1,-208,-140),(3,208,-140),(4,208,140)]:
  bee_tokens+=raw_stamp(bx,by,join('bee token'+str(token)+'-',mod(floor(mul(timer(),12)),4)))
-bee_scene=[setv('bee count',V('LINES')),If(gt(V('bee count'),10),[setv('bee count',10)]),If(lt(V('bee count'),0),[setv('bee count',0)]),
- If(gt(V('bee count'),V('max bees')),[setv('max bees',V('bee count'))]),resize({'SIZE':inp(70)}),setv('bee index',1),repeat(V('bee count'),bee_flight),
- If(both(gt(V('bee count'),0),eq(V('fx active'),1)),bee_tokens),resize({'SIZE':inp(100*ZOOM)})]
-proc('draw bees',[setv('bee count',0),If(eq(V('THEME'),11),bee_scene)])
+bee_tokens += [B('looks_cleargraphiceffects'),resize({'SIZE':inp(100*ZOOM)})]
+proc('draw bee tokens',[If(both(eq(V('THEME'),11),eq(V('fx active'),1)),bee_tokens)])
+# Bee Swarm buffs are temporary badges only; no score, speed or board reads.
+proc('reset bee buffs',[clear('buff stacks'),clear('buff life'),repeat(4,[append('buff stacks',0),append('buff life',0)])])
+def ensure_buffs():return If(neg(both(eq(length('buff stacks'),4),eq(length('buff life'),4))),[call('reset bee buffs')])
+proc('grant bee buff',[If(eq(V('THEME'),11),[ensure_buffs(),setv('buff choice',random(1,4)),
+ replace('buff stacks',V('buff choice'),add(item('buff stacks',V('buff choice')),1)),If(gt(item('buff stacks',V('buff choice')),99),[replace('buff stacks',V('buff choice'),99)]),replace('buff life',V('buff choice'),240)])])
+buff_draw=[setv('buff y',sub(124,mul(V('buff slot'),24))),resize({'SIZE':inp(100)}),
+ If(lt(item('buff life',V('buff index')),60),[effect('GHOST',mul(sub(60,item('buff life',V('buff index'))),1.5))])]+raw_stamp(-220,V('buff y'),'buff badge')+[
+ resize({'SIZE':inp(70)})]+raw_stamp(-228,V('buff y'),join('buff icon',V('buff index')))+[
+ setv('number value',item('buff stacks',V('buff index'))),setv('number digits',2),setv('number scale',40),setv('number spacing',4.5),setv('number x',-218),setv('number y',sub(V('buff y'),3)),call('draw raw number'),B('looks_cleargraphiceffects'),
+ If(both(both(gt(mouse_x(),-237),lt(mouse_x(),-203)),both(gt(mouse_y(),sub(V('buff y'),11)),lt(mouse_y(),add(V('buff y'),11)))),[resize({'SIZE':inp(100)})]+raw_stamp(-150,139,join('buff label',V('buff index')))),change('buff slot',1)]
+buff_loop=[If(gt(item('buff life',V('buff index')),0),[
+ replace('buff life',V('buff index'),sub(item('buff life',V('buff index')),1)),If(eq(item('buff life',V('buff index')),0),[replace('buff stacks',V('buff index'),0)],buff_draw)]),change('buff index',1)]
+proc('draw bee buffs',[If(eq(V('THEME'),11),[ensure_buffs(),setv('buff index',1),setv('buff slot',0),repeat(4,buff_loop),resize({'SIZE':inp(100*ZOOM)})])])
+proc('draw drop dash',[If(eq(V('dash active'),1),[resize({'SIZE':inp(100*ZOOM)})]+stamp(0,0,join('drop dash',floor(div(V('dash age'),2))))+[
+ change('dash age',1),If(gt(V('dash age'),19),[setv('dash active',0)])])])
+# Button lighting shares one layout catalogue with the generated SVGs.
+from interface import BUTTONS,button_glow
+button_lookup=[]
+for screen in dict.fromkeys(button[0] for button in BUTTONS):
+ options=[]
+ for button_id,(button_screen,tab,box,label) in enumerate(BUTTONS,1):
+  if button_screen!=screen:continue
+  match=hit(*box)
+  if tab:match=both(eq(V('settings tab' if screen=='settings' else 'cosmetics tab'),tab),match)
+  options += [If(match,[setv('button hovered',button_id)])]
+ button_lookup += [If(eq(V('SCREEN'),screen),options)]
+proc('update button hover',[setv('button hovered',0)]+button_lookup)
+proc('draw button hover',[call('update button hover'),If(gt(V('button hovered'),0),[resize({'SIZE':inp(100)})]+raw_stamp(0,0,join('button glow',V('button hovered')))+[
+ If(eq(V('SCREEN'),'play'),[resize({'SIZE':inp(100*ZOOM)})])])])
 # establish parent pointers for reporter input blocks
 for k,b in list(blocks.items()):
  for v in b['inputs'].values():
@@ -419,6 +469,7 @@ from settings_art import settings_panel, select_marker, slider_knob, save_notice
 from effects_art import elemental_beam, particle_skin, cosmetic_block, aura
 from expansion_art import bee,bee_token,logo,menu_cosmetics,difficulty_panel,BEE_NAMES
 from cosmetics_art import card
+from scene_art import familiar,FAMILIAR_NAMES,brimstone_beam,brimstone_spark,buff_icon,buff_label,BUFF_NAMES,hard_drop_dash
 costumes=[]
 for theme,palette in enumerate(THEME_PALETTES,1):
  costumes += [costume('t'+str(theme)+'-'+str(i+1),block(c,theme=theme),8,8) for i,c in enumerate(palette)]
@@ -433,7 +484,7 @@ costumes += [costume('tspin',svg(text(60,10,'T-SPIN',8.5,'#d4a5ff',300,extra='te
 costumes += [costume('interface',arena(),240,180)]
 costumes += [costume('combo timer',svg(rect(0,0,110,2,'#b8eeff'),110,2),0,1)]
 costumes += [costume('menu button',menu_button(),46,12)]
-for theme in range(1,12):
+for theme in range(1,13):
  for resume in [False,True]:
   costumes += [costume('menu'+str(theme)+('-resume' if resume else '-play'),menu(theme,resume),240,180)]
  costumes += [costume('theme menu'+str(theme),theme_menu(theme),240,180)]
@@ -448,9 +499,9 @@ for status in ['Playing','Paused','Stopped','Restarted','Game Over']:
 costumes += [costume('history empty',svg(text(150,16,'NO RUNS YET',12,'#aab3cc',300,extra='text-anchor="middle"'),300,24),150,12)]
 costumes += [costume('history slash',svg(text(5,11,'/',11,'#aab3cc',300,extra='text-anchor="middle"'),10,16),5,8)]
 costumes += [costume('ambient spark',ambient_spark(),3,3)]
-for kind in list(range(1,8))+list(range(11,22)):
- costumes += [costume('outline'+str(kind),hover_outline(kind) if kind!=21 else svg(rect(243,225,108,64,'none','#c6e4a8',3,extra='stroke-width="1.2"')),240,180)]
- for frame in range(8):costumes += [costume('object'+str(kind)+'-'+str(frame),hover_object(kind,frame) if kind!=21 else svg('<g transform="translate(10 23) scale(2)">'+bee(1,frame%4).split('>',1)[1].rsplit('</svg>',1)[0]+'</g>',120,120),60,60)]
+for kind in list(range(1,8))+list(range(11,23)):
+ costumes += [costume('outline'+str(kind),hover_outline(kind),240,180)]
+ for frame in range(8):costumes += [costume('object'+str(kind)+'-'+str(frame),hover_object(kind,frame),60,60)]
 for kind in range(1,11):
  costumes += [costume('element'+str(kind)+'-'+str(f),elemental_beam(kind,f),80,16 if kind==5 else 8) for f in range(10)]
  costumes += [costume('element spark'+str(kind),particle_skin(kind),6 if kind==5 else 4,6 if kind==5 else 4)]
@@ -485,9 +536,19 @@ for i in range(1,11):
  for frame in range(4):costumes += [costume('bee'+str(i)+'-'+str(frame),bee(i,frame),24,18)]
 for i in [1,2,3,4]:
  for frame in range(4):costumes += [costume('bee token'+str(i)+'-'+str(frame),bee_token(i,frame),16,16)]
+for i in range(1,11):
+ for frame in range(4):costumes += [costume('familiar'+str(i)+'-'+str(frame),familiar(i,frame),24,20)]
+for frame in range(10):
+ costumes += [costume('element11-'+str(frame),brimstone_beam(frame),80,14),costume('drop dash'+str(frame),hard_drop_dash(frame),80,160)]
+costumes += [costume('element spark11',brimstone_spark(),6,6),costume('buff badge',svg(rect(.5,.5,33,21,'#0d1c24','#d7c56d',4,extra='stroke-width=".6"'),34,22),17,11)]
+for i in range(1,5):costumes += [costume('buff icon'+str(i),buff_icon(i),10,10),costume('buff label'+str(i),buff_label(i),30,6)]
+for i,(_,_,box,_) in enumerate(BUTTONS,1):costumes += [costume('button glow'+str(i),button_glow(box),240,180)]
 lists['achievement names']=['achievement names',[a[0] for a in ACHIEVEMENTS]]
 lists['bee names']=['bee names',[n+' Bee' for n in BEE_NAMES]]
-backdrops=[costume('theme'+str(i),landscape(i),240,180) for i in range(1,12)]
+lists['familiar names']=['familiar names',FAMILIAR_NAMES]
+lists['buff names']=['buff names',BUFF_NAMES]
+lists['button labels']=['button labels',[button[3] for button in BUTTONS]]
+backdrops=[costume('theme'+str(i),landscape(i),240,180) for i in range(1,13)]
 # Matrix order: I J L O S T Z. Rotation around SRS centers.
 bases=[[(0,1),(1,1),(2,1),(3,1)],[(0,0),(0,1),(1,1),(2,1)],[(2,0),(0,1),(1,1),(2,1)],[(1,0),(2,0),(1,1),(2,1)],[(1,0),(2,0),(0,1),(1,1)],[(1,0),(0,1),(1,1),(2,1)],[(0,0),(1,0),(1,1),(2,1)]]
 matrices=[]

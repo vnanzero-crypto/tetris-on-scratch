@@ -20,18 +20,18 @@ During play or after game over, press **M** or click the upper-left **Menu** but
 | S or Down | Soft drop |
 | W or Up | Rotate clockwise |
 | Z | Rotate counterclockwise |
-| Space | Hard drop |
+| Space | Hard drop with falling dash trails |
 | C | Hold / swap once per piece |
 | R | Open the new-run difficulty picker |
 | M / Menu button | Return to main menu |
 | T / Themes button | Open the theme gallery; T cycles while inside |
-| 1–9 / 0 / B | Select theme 1–9 / 10 / 11 inside the gallery |
+| 1–9 / 0 / B / I | Select theme 1–9 / 10 / 11 / 12 inside the gallery |
 | H / Run History button | Open saved scores from the main menu |
 | U | Unlock all 50 achievements and every cosmetic |
 
 Holding W or Up makes one clockwise rotation; release both and press again for another rotation. The live input display shows only ↑ above ← ↓ →, like a physical keyboard. Matching WASD actions light the corresponding arrow. Gameplay control hints are hidden.
 
-Hovering menu actions reveals animated related objects; theme cards have their own previews. Twenty-four decorative motes drift around menus and outside the playfield. These visual effects do not change the board, score, or input.
+All **94 clickable controls** light up on hover, including menu buttons, cosmetic cards, settings controls, and page navigation. Hovering menu actions also reveals animated related objects. Theme outlines follow the current four-column grid, with their animated preview in the footer. Twenty-four decorative motes drift around menus and outside the playfield. These visual effects do not change the board, score, or input.
 
 ## Five difficulties
 
@@ -62,6 +62,8 @@ Open **Cosmetics** to preview and equip clear effects, block styles, and board a
 Normal, Fire, Water, Ice, and Rainbow clears are available immediately. The five added clear effects and all non-default block styles and auras are achievement rewards. Classic uses the selected theme’s seven piece colors and textures.
 
 Rainbow clears have a **160 × 32** logical-pixel spectrum spanning all ten board columns, with larger prism sparks. Every clear style follows the actual cleared rows and fades after 24 rendered frames.
+
+Pressing **Space** during play briefly sends sparse dash lines falling down the well. The trails sit behind the pieces and finish after 20 rendered frames. The Binding of Isaac theme supplies its own brimstone clear animation while retaining your equipped cosmetic choice for other themes.
 
 ![Clear effects](docs/cosmetics-clear.png)
 
@@ -105,9 +107,9 @@ A line clear triggers a decaying shake. Settings provides a 0–100 slider and O
 
 ![Larger rainbow clear and top combo timer](docs/clear-fx.png)
 
-## Eleven themes
+## Twelve themes
 
-Open **Themes** and select a card in the three-row gallery. Use **1–9 / 0 / B** for themes 1–11, or **T** to cycle. Changing themes preserves the board, score, and combo; a new run retains the chosen theme.
+Open **Themes** and select a card in the four-column, three-row gallery. Use **1–9 / 0 / B / I** for themes 1–12, or **T** to cycle. Changing themes preserves the board, score, and combo; a new run retains the chosen theme.
 
 | Key | Theme | Background and blocks |
 | --- | --- | --- |
@@ -122,12 +124,19 @@ Open **Themes** and select a card in the three-row gallery. Use **1–9 / 0 / B*
 | 9 | Aurora | Northern lights over ice; flowing ribbon tiles |
 | 0 | Blueprint | Drafting grid; schematic tiles |
 | B | Beeswarm Sim Theme | Flower fields, hive, honey tokens; honeycomb blocks |
+| I | Binding of Isaac | Candlelit stone basement, crimson seals and rubble; chipped stone and tear-etched blocks |
 
 ![Theme gallery](docs/theme-menu.png)
 
-**Beeswarm Sim Theme** adds one flying bee per line cleared in the current run, up to ten. Original fan artwork depicts Basic, Bomb, Cool, Rascal, Bubble, Rage, Commander, Music, Diamond, and Tabby bees. They fly along the outer edges, outside the board. Honey, bubble, and bomb token effects accompany clears. The bees and tokens are decorative; lines, scoring, and collisions remain unchanged.
+**Beeswarm Sim Theme** adds one flying bee per line cleared in the current run, up to ten. Original fan artwork depicts Basic, Bomb, Cool, Rascal, Bubble, Rage, Commander, Music, Diamond, and Tabby bees. Each bee has an independent random flight path, with changing direction and speed. They can cross the upper and lower corridors and roam around the screen while avoiding the protected playfield, including space for maximum camera shake.
 
-![Ten bees outside the playfield](docs/beeswarm-gameplay.png)
+Every line-clear event also grants one random cosmetic buff: **Bomb Honey**, **Flower Honey**, **Bubble Pollen**, or **Blue Haste**. Icon badges stack down the top-left gutter, outside the board; hover a badge to read its name. Repeated picks add to its count, up to 99, and refresh its lifetime. Badges last 240 rendered frames and fade during the final 60; expiry removes the stack. The menu pauses them, and a new run clears them. Buffs change no scoring, gravity, movement, or collisions.
+
+![Roaming bees and cosmetic buff stacks](docs/beeswarm-gameplay.png)
+
+**Binding of Isaac** adds one floating familiar per line cleared in the current run, up to ten. Original fan artwork depicts Brother Bobby, Sister Maggy, Little Steven, Little Brimstone, Demon Baby, Ghost Baby, Rotten Baby, Seraphim, Guardian Angel, and Incubus. Their independent random paths use the same protected area as the bees. Clears fire a full-row **brimstone beam** with a red-black glow, white core, runes, and sparks. The theme and familiars are cosmetic and leave gameplay rules intact.
+
+![Familiars and brimstone clear](docs/isaac-gameplay.png)
 
 ## Scoring and gameplay
 
@@ -163,7 +172,7 @@ Python 3.10+ builds the project without Python dependencies or network access:
 python3 tools/build.py
 ```
 
-The builder writes `dist/tetris-vnanzero-edition.sb3` and the identical `dist/stack-flow.sb3`. The current archive contains **6,287 Scratch blocks and 984 unique SVG assets**. Copy the built archive to both root filenames when preparing a release.
+The builder writes `dist/tetris-vnanzero-edition.sb3` and the identical `dist/stack-flow.sb3`, with all artwork embedded as SVG assets. Copy the built archive to both root filenames when preparing a release. Shared hover bounds are defined in [tools/interface.py](tools/interface.py).
 
 Run the native gameplay checks with dependencies outside the checkout:
 
@@ -172,6 +181,6 @@ npm install --prefix /tmp/tetris-check scratch-vm@5.0.300 scratch-storage@4.1.27
 NODE_PATH=/tmp/tetris-check/node_modules node tools/check.cjs
 ```
 
-All **301 Scratch VM assertions** passed, including movement and scoring, timed combos, pause/resume, all eleven themes, five difficulty timings, the 50-entry achievement catalogue, cosmetic locks and unlocks, RGB/rainbow modes, bee limits, history alignment, and Save Profile serialization. Headless checks omit a renderer and can emit costume-renderer warnings.
+All **457 native Scratch VM assertions** passed, covering movement and scoring, timed combos, pause/resume, all twelve themes, five difficulty timings, the 50-entry achievement catalogue, cosmetic locks and unlocks, RGB/rainbow modes, 4,000 companion flight steps, cosmetic buffs, clear and dash lifecycles, all 94 button hover bounds, history alignment, and Save Profile serialization. Headless checks omit a renderer and can emit costume-renderer warnings.
 
-Chromium also verified real menu clicks, the difficulty picker and instant Resume, every cosmetic choice, all achievement pages, U without fake scores, rainbow colors, one bee per line capped at ten outside gameplay, the timer above the board, and Stop/green-flag plus actual exported `.sb3` reload persistence. Screenshots use scripted board and score fixtures.
+Chromium verified all 94 hover targets, the corrected theme gallery, independently moving bees and familiars outside the protected board, one random cosmetic buff per Bee Swarm clear, paused buff decay, rendered dash trails and brimstone beams, and exported `.sb3` reload persistence. Previous browser checks also covered the difficulty picker and instant Resume, every cosmetic choice, all achievement pages, U without fake scores, rainbow colors, and Stop/green-flag persistence. Screenshots use scripted board and score fixtures.

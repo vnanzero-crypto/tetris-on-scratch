@@ -8,7 +8,8 @@ const fs=require('fs');
  const get=n=>t.variables[n].value;
  const set=(n,v)=>t.variables[n].value=v;
  function run(name){
-  const b=Object.values(t.blocks._blocks).find(b=>b.opcode=='procedures_call'&&b.mutation.proccode==name);
+  const b=Object.values(t.blocks._blocks).find(b=>b.opcode=='procedures_call'&&b.mutation.proccode==name)
+   ||Object.values(t.blocks._blocks).find(b=>b.opcode=='procedures_prototype'&&b.mutation.proccode==name);
   if(!b)throw Error('no call '+name);
   const id='test-'+name; t.blocks.createBlock({id,opcode:'procedures_call',next:null,parent:null,inputs:{},fields:{},topLevel:true,shadow:false,mutation:b.mutation});
   const th=rt._pushThread(id,t);
@@ -134,17 +135,17 @@ const fs=require('fs');
  clock.projectTimer=originalTimer;
  // Theme cycling changes the artwork, never the logical board or score.
  const stage=rt.targets.find(target=>target.isStage),costumes=t.getCostumes();
- assert(stage.getCostumes().length===11&&new Set(stage.getCostumes().map(c=>c.assetId)).size===11,'all eleven background themes have distinct embedded artwork');
+ assert(stage.getCostumes().length===12&&new Set(stage.getCostumes().map(c=>c.assetId)).size===12,'all twelve background themes have distinct embedded artwork');
  const paletteIds=[];
- for(let theme=1;theme<=11;theme++){
+ for(let theme=1;theme<=12;theme++){
   const themed=costumes.filter(c=>c.name.startsWith(`t${theme}-`));
   assert(themed.length===14,`theme ${theme} includes all seven block colors and seven ghost skins`);
   paletteIds.push(costumes.find(c=>c.name===`t${theme}-1`).assetId);
  }
- assert(new Set(paletteIds).size===11,'the eleven themes include distinct block palettes');
+ assert(new Set(paletteIds).size===12,'the twelve themes include distinct block palettes');
  set('THEME',1);set('SCORE',765);get('board')[199]=2;const themeBoard=JSON.stringify(get('board'));
- for(let step=0;step<11;step++){
-  run('next theme');const expected=((step+1)%11)+1;
+ for(let step=0;step<12;step++){
+  run('next theme');const expected=((step+1)%12)+1;
   assert(Number(get('THEME'))===expected&&stage.getCostumes()[stage.currentCostume].name===`theme${expected}`,`theme cycle selects background ${expected}`);
   assert(Number(get('SCORE'))===765&&JSON.stringify(get('board'))===themeBoard,'theme changes preserve the board and score');
  }
@@ -247,7 +248,7 @@ const fs=require('fs');
  hoverAt('menu',120,261,4,'Run History has a matching menu hover object');
  hoverAt('menu',12,130,0,'moving away from menu actions clears the hover object');
  hoverAt('menu',120,155,0,'the gap between menu actions has no stale hover object');
- for(let theme=0;theme<11;theme++){
+ for(let theme=0;theme<12;theme++){
   hoverAt('themes',65+116*(theme%4),117+70*Math.floor(theme/4),11+theme,'theme '+(theme+1)+' has its own hover preview');
  }
  hoverAt('themes',50,28,5,'theme gallery Back has a navigation hover object');
@@ -258,6 +259,61 @@ const fs=require('fs');
  hoverAt('history',240,302,0,'the history pagination gap has no stale preview');
  hoverAt('play',120,130,0,'gameplay never shows a menu hover object');
  assert(presentationState()===beforePresentation,'hover detection and animated previews preserve the board, bag, score, combos and saved runs');
+ // Compare the actual hover art with the new four-column layout. Checking the
+ // pixels encoded in each SVG catches the old five-column outline regression.
+ function firstRect(svg){
+  const tag=svg.match(/<rect\b[^>]*>/)?.[0];
+  return tag?['x','y','width','height'].map(n=>Number(tag.match(new RegExp('\\b'+n+'="([^"]+)"'))?.[1])):[];
+ }
+ for(let theme=0;theme<12;theme++){
+  const c=costumes.find(c=>c.name==='outline'+(11+theme));
+  const rect=c?firstRect(Buffer.from(c.asset.data).toString('utf8')):[];
+  const expected=[11+116*(theme%4),85+70*Math.floor(theme/4),108,64];
+  assert(JSON.stringify(rect)===JSON.stringify(expected),'theme '+(theme+1)+' hover outline follows its current gallery card');
+ }
+ // Expected visible controls, independent of the builder's hover catalogue.
+ const buttons=[],button=(screen,tab,box,label)=>buttons.push([screen,tab,box,label]);
+ for(const [box,label] of [
+  [[32,112,246,150],'Play / Resume'],[[32,162,246,192],'New Run'],[[32,204,246,234],'Themes'],[[32,246,246,276],'Run History'],
+  [[270,266,468,290],'Cosmetics'],[[270,300,358,328],'Settings'],[[364,300,468,328],'Achievements']])button('menu',0,box,label);
+ button('play',0,[8,10,100,34],'Menu');button('themes',0,[16,16,100,42],'Back');
+ const themeNames=['Galaxy','Mountains','Ocean','Sunset','Neon City','Black','Sakura','Volcano','Aurora','Blueprint','Beeswarm Sim Theme','Binding of Isaac'];
+ themeNames.forEach((name,i)=>{const x=12+116*(i%4),y=86+70*Math.floor(i/4);button('themes',0,[x,y,x+106,y+62],name)});
+ for(const [screen,y1,y2] of [['history',288,316],['achievements',306,334]]){
+  button(screen,0,[16,16,100,42],'Back');button(screen,0,[96,y1,196,y2],'Previous');button(screen,0,[284,y1,384,y2],'Next');
+ }
+ const modes=['Easy','Normal','Hard','Expert','Nightmare'];
+ button('difficulty',0,[16,16,100,42],'Back');modes.forEach((name,i)=>button('difficulty',0,[32,98+i*44,448,132+i*44],name));
+ for(const [box,label] of [
+  [[16,16,100,42],'Back'],[[128,16,238,42],'Clear tab'],[[244,16,354,42],'Blocks tab'],[[360,16,470,42],'Auras tab'],
+  [[18,316,164,344],'RGB / Rainbow'],[[310,316,462,344],'Save Profile']])button('cosmetics',0,box,label);
+ const cosmeticNames=[['Normal','Fire','Water','Ice','Rainbow','Lightning','Void','Confetti','Honey','Galaxy'],['Classic','Ember','Frost','Prism','Neon Wire','Obsidian','Honeycomb','Plasma','Marble'],['None','Gold','Rainbow','Inferno','Tidal','Glacial','Nebula','Hive']];
+ cosmeticNames.forEach((names,tab)=>names.forEach((name,i)=>{const x=12+94*(i%5),y=100+100*Math.floor(i/5);button('cosmetics',tab+1,[x,y,x+82,y+82],name)}));
+ for(const [box,label] of [[[16,16,100,42],'Back'],[[166,16,306,42],'General tab'],[[316,16,456,42],'RGB Colors tab'],[[310,316,462,344],'Save Profile']])button('settings',0,box,label);
+ button('settings',1,[126,78,456,104],'Player name');modes.forEach((name,i)=>button('settings',1,[126+66*i,116,186+66*i,140],name));
+ button('settings',1,[140,153,420,175],'Shake intensity');button('settings',1,[424,153,462,175],'Shake Off');button('settings',1,[126,214,456,252],'Cosmetics');
+ for(const [title,offset] of [['Game accent',0],['Key highlight',120]])['R','G','B'].forEach((channel,i)=>{
+  const y=112+30*i+offset;button('settings',2,[136,y-7,366,y+7],title+' '+channel+' slider');button('settings',2,[376,y-10,418,y+10],title+' '+channel+' value');
+ });
+ for(const [box,label] of [[[18,182,164,202],'Rainbow Accent'],[[174,316,296,344],'Rainbow Keys'],[[18,316,164,344],'Use Theme Colors']])button('settings',2,box,label);
+ assert(buttons.length===94&&get('button labels').length===buttons.length,'all ninety-four interface controls have a native hover target');
+ const buttonState=presentationState();
+ for(let index=0;index<buttons.length;index++){
+  const [screen,tab,[x1,y1,x2,y2],label]=buttons[index];
+  set('SCREEN',screen);if(tab)set(screen==='settings'?'settings tab':'cosmetics tab',tab);
+  mouse._scratchX=(x1+x2)/2-240;mouse._scratchY=180-(y1+y2)/2;
+  run('update button hover');run('draw button hover');
+  const glow=costumes.find(c=>c.name==='button glow'+(index+1));
+  const rect=glow?firstRect(Buffer.from(glow.asset.data).toString('utf8')):[];
+  assert(Number(get('button hovered'))===index+1&&String(get('button labels')[index])===label&&JSON.stringify(rect)===JSON.stringify([x1+.5,y1+.5,x2-x1-1,y2-y1-1]),screen+' / '+label+' lights up in its visible button bounds');
+ }
+ set('SCREEN','cosmetics');set('cosmetics tab',3);mouse._scratchX=429-240;mouse._scratchY=180-241;run('update button hover');
+ assert(Number(get('button hovered'))===0,'hidden cosmetic cards do not retain the previous tab hover');
+ set('SCREEN','settings');set('settings tab',1);mouse._scratchX=251-240;mouse._scratchY=180-112;run('update button hover');
+ assert(Number(get('button hovered'))===0,'RGB slider hover targets are inactive on the General tab');
+ set('SCREEN','themes');mouse._scratchX=123-240;mouse._scratchY=180-117;run('update button hover');
+ assert(Number(get('button hovered'))===0,'gaps between theme cards clear button lighting');
+ assert(presentationState()===buttonState,'lighting every interface control preserves gameplay, progression and run history');
  set('SCREEN','menu');
 
  // Choosing a difficulty and browsing cosmetics must leave a paused run intact.
@@ -273,18 +329,84 @@ const fs=require('fs');
  }
  assert(Number(get('lifetime runs'))===startsBefore[0]+5&&Number(get('expert starts'))===startsBefore[1]+1&&Number(get('nightmare starts'))===startsBefore[2]+1,'confirmed runs advance lifetime and advanced-difficulty achievement progress');
 
- // Bee Swarm companions stay at the stage edge and never alter game state.
- const beeGuardNames=['board','bag','piece','x','y','rotation','SCORE','LINES','COMBO','run serial',...historyLists];
+ // Roaming companion counts and decorative rendering never alter game state.
+ const beeGuardNames=['board','bag','piece','x','y','rotation','HOLD','can hold','last rotation','fall','ground ticks','gravity base','lock limit','LEVEL','SCORE','LINES','COMBO','combo expires','run max combo','run serial','BEST SCORE','unlocked','lifetime lines','lifetime spins','lifetime quads','lifetime rotations','lifetime drops','lifetime runs','rainbow lines','beeswarm lines',...historyLists];
  const beeState=()=>JSON.stringify(beeGuardNames.map(name=>get(name)));
+ const safeCompanion=(x,y)=>Number.isFinite(Number(x))&&Number.isFinite(Number(y))&&Math.abs(Number(x))<=222&&Math.abs(Number(y))<=164&&(Math.abs(Number(x))>=96||Math.abs(Number(y))>=150);
  set('THEME',11);
  for(const lines of [0,1,5,10,40]){
   set('LINES',lines);const before=beeState();run('draw bees');
   assert(Number(get('bee count'))===Math.min(lines,10),'Bee Swarm shows '+Math.min(lines,10)+' companions after '+lines+' lines');
   assert(beeState()===before,'bee animation preserves the board, score and history');
-  if(lines>0)assert(Number.isFinite(Number(get('bee x')))&&Math.abs(Number(get('bee x')))>=200,'bee companions fly beyond the gameplay area');
+  if(lines>0)assert(get('companion x').every((x,i)=>safeCompanion(x,get('companion y')[i])),'bee companions remain outside the protected gameplay rectangle');
  }
  set('THEME',1);const otherThemeBeeState=beeState();run('draw bees');
  assert(Number(get('bee count'))===0&&beeState()===otherThemeBeeState,'other themes hide bees without changing gameplay');
+ set('THEME',12);
+ for(const lines of [0,1,6,10,40]){
+  set('LINES',lines);const before=beeState();run('draw companions');
+  assert(Number(get('familiar count'))===Math.min(lines,10)&&Number(get('bee count'))===0,'Isaac theme shows '+Math.min(lines,10)+' familiars after '+lines+' lines');
+  assert(beeState()===before,'familiar animation preserves board, score and history');
+ }
+ const companionLists=['companion x','companion y','companion vx','companion vy','companion turn'];
+ run('init companions');
+ assert(companionLists.every(n=>get(n).length===10)&&get('companion x').every((x,i)=>safeCompanion(x,get('companion y')[i])),'random flight initializes ten aligned companions outside gameplay');
+ const initialPositions=get('companion x').map((x,i)=>[Number(x),Number(get('companion y')[i])]);
+ const flightGuard=beeState();let safeFlight=true,roamedInward=false;const movedCompanions=new Set();
+ for(let frame=0;frame<400;frame++)for(let index=1;index<=10;index++){
+  set('companion index',index);run('step companion');
+  const x=Number(get('companion x')[index-1]),y=Number(get('companion y')[index-1]);
+  safeFlight&&=safeCompanion(x,y);roamedInward||=Math.abs(x)<190;
+  if(Math.hypot(x-initialPositions[index-1][0],y-initialPositions[index-1][1])>1)movedCompanions.add(index);
+ }
+ assert(safeFlight,'four thousand flight steps remain on stage and avoid the protected gameplay rectangle');
+ assert(roamedInward&&movedCompanions.size===10,'companions roam individually beyond the old fixed edge formation');
+ assert(new Set(get('companion vx').map((x,i)=>x+','+get('companion vy')[i])).size>1,'different companions maintain different flight directions');
+ assert(beeState()===flightGuard,'random flight never changes a piece, score, combo or saved run');
+ function flightFixture(x,y,vx,vy){
+  for(const [name,value] of [['companion x',x],['companion y',y],['companion vx',vx],['companion vy',vy],['companion turn',100]])get(name)[0]=value;
+  set('companion index',1);run('step companion');
+  return [Number(get('companion x')[0]),Number(get('companion y')[0])];
+ }
+ let flight=flightFixture(97,0,-2,0);
+ assert(safeCompanion(...flight)&&flight[0]>=96,'sideways flight reflects before entering gameplay');
+ flight=flightFixture(0,151,0,-2);
+ assert(safeCompanion(...flight)&&flight[1]>=150,'vertical flight reflects before entering gameplay');
+ flight=flightFixture(97,152,-2,0);
+ assert(safeCompanion(...flight)&&flight[0]<96,'companions can cross above the board instead of staying in side lanes');
+ flight=flightFixture(221,163,2,2);
+ assert(safeCompanion(...flight),'corner flight reflects within the visible stage');
+
+ // Bee buffs are visual stacks with a fade/expiry, never gameplay modifiers.
+ set('THEME',1);set('buff stacks',[0,0,0,0]);set('buff life',[0,0,0,0]);run('grant bee buff');
+ assert(get('buff stacks').every(x=>Number(x)===0)&&get('buff life').every(x=>Number(x)===0),'ordinary themes never receive Bee Swarm buffs');
+ set('THEME',11);const buffGuard=beeState();run('grant bee buff');
+ assert(get('buff stacks').reduce((a,x)=>a+Number(x),0)===1&&get('buff life').filter(x=>Number(x)===240).length===1,'a clear grants one random cosmetic buff and refreshes its lifetime');
+ for(let i=0;i<200;i++)run('grant bee buff');
+ assert(get('buff stacks').every(x=>Number(x)>0&&Number(x)<=99)&&get('buff life').every(x=>Number(x)===240),'repeated cosmetic drops can stack all four buff types within their display limits');
+ assert(beeState()===buffGuard,'gaining and stacking buffs never changes board, scoring, combo or history');
+ set('buff stacks',[3,4,2,0]);set('buff life',[2,1,61,0]);run('draw bee buffs');
+ assert(JSON.stringify(get('buff life').map(Number))==='[1,0,60,0]'&&JSON.stringify(get('buff stacks').map(Number))==='[3,0,2,0]','buff timers decay, reach their fade interval and remove expired stacks');
+ set('buff stacks',[1,2,3,4]);set('buff life',[240,240,240,240]);for(let frame=0;frame<240;frame++)run('draw bee buffs');
+ assert(get('buff life').every(x=>Number(x)===0)&&get('buff stacks').every(x=>Number(x)===0),'all cosmetic buff badges disappear after their lifetime');
+ run('reset');singleClear();
+ assert(Number(get('SCORE'))===100&&Number(get('LINES'))===1&&get('buff stacks').reduce((a,x)=>a+Number(x),0)===1,'an actual Bee Swarm line clear grants one buff with ordinary score and line totals');
+ const buffTotal=get('buff stacks').reduce((a,x)=>a+Number(x),0);
+ get('board').fill(0);set('piece',4);set('x',3);set('y',18);set('rotation',0);run('lock');
+ assert(get('buff stacks').reduce((a,x)=>a+Number(x),0)===buffTotal,'a placement without a line clear grants no cosmetic buff');
+ run('reset');
+ assert(get('buff stacks').every(x=>Number(x)===0)&&get('buff life').every(x=>Number(x)===0),'starting a new run clears transient cosmetic buffs');
+
+ set('THEME',12);set('CLEAR EFFECT',5);run('reset');singleClear();
+ assert(Number(get('fx style'))===11&&Number(get('fx active'))===1&&get('clear rows').map(Number).join(',')==='19','Isaac clears select the full-row brimstone animation');
+ assert(Number(get('SCORE'))===100&&Number(get('LINES'))===1&&get('unlocked').length===50,'brimstone clears retain ordinary scoring and the fifty-achievement catalogue');
+ const brimstoneGuard=beeState();for(let frame=0;frame<24;frame++)run('draw clear fx');
+ assert(Number(get('fx active'))===0&&beeState()===brimstoneGuard,'brimstone clears fade out without changing gameplay');
+ set('THEME',1);run('reset');const dropsBeforeDash=Number(get('lifetime drops'));run('hard drop');
+ assert(Number(get('dash active'))===1&&Number(get('dash age'))===0&&Number(get('lifetime drops'))===dropsBeforeDash+1,'a hard drop starts its falling dash animation exactly once');
+ const dashGuard=beeState();for(let frame=0;frame<20;frame++)run('draw drop dash');
+ assert(Number(get('dash active'))===0&&beeState()===dashGuard,'falling dash trails finish after twenty frames without moving or scoring');
+ run('hard drop');run('reset');assert(Number(get('dash active'))===0,'new runs clear unfinished hard-drop trails');
  set('COMBO',5);set('combo expires',clock.projectTimer()+4);const timerState=beeState();run('draw combo timer');
  assert(beeState()===timerState,'the large combo timer is presentation only');
 
@@ -346,7 +468,14 @@ const fs=require('fs');
  set('key custom',1);run('update rainbow');set('settings tab',2);run('render settings');const rgbPen=t.getCustomState('Scratch.pen').penAttributes.color4f.slice(0,3).map(x=>Math.round(x*255));set('key custom',2);
  // Scratch converts RGB through HSV and can truncate a channel by one unit.
  assert(rgbPen.every((v,i)=>Math.abs(v-[255,42,90][i])<=1),'rendered RGB matches selected key channels within Scratch rounding');
- assert(costumes.filter(c=>c.name.startsWith('element')&&!c.name.startsWith('element spark')).length===100,'ten selectable clear effects each include ten animation frames');
+ assert(costumes.filter(c=>/^element(?:[1-9]|10)-/.test(c.name)).length===100,'ten selectable clear effects each include ten animation frames');
+ assert(costumes.filter(c=>/^element11-/.test(c.name)).length===10&&Boolean(costumes.find(c=>c.name==='element spark11')),'Isaac includes ten brimstone clear frames and a matching spark');
+ assert(costumes.filter(c=>/^familiar\d+-[0-3]$/.test(c.name)).length===40&&get('familiar names').length===10&&new Set(get('familiar names').map(String)).size===10,'ten distinct familiars each include four animation frames');
+ assert(costumes.filter(c=>/^drop dash\d$/.test(c.name)).length===10,'Space-drop trails include ten falling dash frames');
+ assert(costumes.filter(c=>/^buff icon[1-4]$/.test(c.name)).length===4&&get('buff names').length===4,'all four cosmetic Bee Swarm buffs have an icon and readable name');
+ const brimstone=costumes.find(c=>c.name==='element11-0'),dash=costumes.find(c=>c.name==='drop dash0');
+ assert(Boolean(brimstone)&&brimstone.rotationCenterX===80&&brimstone.rotationCenterY===14&&/\bwidth="160"/.test(Buffer.from(brimstone.asset.data).toString('utf8')),'brimstone clears align with the complete ten-column row');
+ assert(Boolean(dash)&&dash.rotationCenterX===80&&dash.rotationCenterY===160&&/\bwidth="160"/.test(Buffer.from(dash.asset.data).toString('utf8'))&&/\bheight="320"/.test(Buffer.from(dash.asset.data).toString('utf8')),'falling dash trails align with the logical playfield');
  assert(costumes.filter(c=>c.name.startsWith('skin')).length===112,'eight earned skins include every block and ghost color');
  assert(costumes.filter(c=>c.name.startsWith('aura')).length===56,'seven earned auras include eight animation frames each');
  assert(costumes.filter(c=>/^achievement\d+-[01]$/.test(c.name)).length===100,'all fifty achievement cards include distinct locked and unlocked states');
