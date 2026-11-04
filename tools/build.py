@@ -1,6 +1,7 @@
 """Build an original Scratch 3 falling-block game using native Scratch blocks."""
 import json, zipfile, hashlib, pathlib
 ROOT=pathlib.Path(__file__).resolve().parents[1]
+ZOOM=.82
 blocks={}; variables={}; lists={}; count=0
 
 def uid():
@@ -62,9 +63,24 @@ def coords():return [setv('cx',add(V('tx'),mod(V('i'),4))),setv('cy',add(V('ty')
 def join(a,b):return R('operator_join',STRING1=a,STRING2=b)
 def div(a,b):return R('operator_divide',NUM1=a,NUM2=b)
 def random(a,b):return R('operator_random',FROM=a,TO=b)
-def stamp(px,py,p):return [B('motion_gotoxy',{'X':inp(px),'Y':inp(py)}),B('looks_switchcostumeto',{'COSTUME':inp(p)}),B('pen_stamp')]
+def position(px,py):return B('motion_gotoxy',{'X':inp(add(mul(px,ZOOM),V('shake x'))),'Y':inp(add(mul(py,ZOOM),V('shake y')))})
+def raw_stamp(px,py,p):return [B('motion_gotoxy',{'X':inp(px),'Y':inp(py)}),B('looks_switchcostumeto',{'COSTUME':inp(p)}),B('pen_stamp')]
+def stamp(px,py,p):return [position(px,py),B('looks_switchcostumeto',{'COSTUME':inp(p)}),B('pen_stamp')]
+def block_stamp(px,py,p):return stamp(px,py,join(join('t',V('THEME')),join('-',p)))
+def timer():return (B('sensing_timer'),)
 def effect(name,value):return B('looks_seteffectto',{'VALUE':inp(value)},{'EFFECT':[name,None]})
 def out_of_bounds(x,y):return either(either(lt(V(x),0),gt(V(x),9)),either(lt(V(y),0),gt(V(y),19)))
+
+# Four-second rolling combo window uses Scratch's real clock, not frame counts.
+proc('update combo',[If(both(gt(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',0),setv('combo expires',0)])])
+proc('clear combo',[If(either(eq(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',1)],[change('COMBO',1)]),
+ setv('combo expires',add(timer(),4)),setv('combo bonus',mul(mul(sub(V('COMBO'),1),50),V('LEVEL')))])
+proc('update camera',[setv('shake x',0),setv('shake y',0),If(gt(V('shake ticks'),0),[
+ setv('shake amount',mul(div(V('shake ticks'),10),1.6)),
+ If(eq(mod(V('shake ticks'),2),0),[setv('shake x',V('shake amount'))],[setv('shake x',sub(0,V('shake amount')))]),
+ If(eq(mod(V('shake ticks'),3),0),[setv('shake y',mul(V('shake amount'),-.5))],[setv('shake y',mul(V('shake amount'),.5))]),change('shake ticks',-1)])])
+proc('apply theme',[B('looks_switchbackdropto',{'BACKDROP':inp(join('theme',V('THEME')))})])
+proc('next theme',[setv('THEME',add(mod(V('THEME'),5),1)),call('apply theme')])
 
 proc('test position',[
  setv('valid',1),setv('shape',shape(V('piece'),V('tr'))),setv('i',0),
@@ -76,7 +92,7 @@ proc('move',[setv('tx',add(V('x'),V('dx'))),setv('ty',add(V('y'),V('dy'))),setv(
 proc('refill bag',[clear('pool'),repeat(7,[append('pool',add(length('pool'),1))]),repeat(7,[setv('pick',random(1,length('pool'))),append('bag',item('pool',V('pick'))),delete('pool',V('pick'))])])
 proc('spawn',[If(eq(length('bag'),0),[call('refill bag')]),setv('piece',item('bag',1)),delete('bag',1),
  setv('x',3),setv('y',0),setv('rotation',0),setv('last rotation',0),setv('fall',0),setv('ground ticks',0),
- setv('tx',V('x')),setv('ty',V('y')),setv('tr',0),call('test position'),If(eq(V('valid'),0),[setv('GAME OVER',1)])])
+ setv('tx',V('x')),setv('ty',V('y')),setv('tr',0),call('test position'),If(eq(V('valid'),0),[setv('GAME OVER',1),setv('COMBO',0),setv('combo expires',0)])])
 # Compact wall and floor kick set; spin scoring uses the three-corner rule.
 proc('rotate',[setv('kick',1),setv('rotated',0),repeat(7,[If(eq(V('rotated'),0),[
  setv('tx',add(V('x'),item('kick x',V('kick')))),setv('ty',add(V('y'),item('kick y',V('kick')))),setv('tr',mod(add(V('rotation'),V('turn')),4)),call('test position'),
@@ -90,7 +106,7 @@ proc('detect spin',[setv('t spin',0),setv('corners',0),
 # All effects are native Scratch pen stamps; their state expires after 24 frames.
 proc('start clear fx',[clear('clear rows'),setv('fx row',1),repeat(length('pending clear rows'),[
  append('clear rows',item('pending clear rows',V('fx row'))),change('fx row',1)]),
- setv('fx active',1),setv('fx age',0),clear('particle x'),clear('particle y'),clear('particle vx'),clear('particle vy'),
+ setv('shake ticks',10),setv('fx active',1),setv('fx age',0),clear('particle x'),clear('particle y'),clear('particle vx'),clear('particle vy'),
  setv('fx row',1),repeat(length('clear rows'),[setv('fx y',sub(152,mul(item('clear rows',V('fx row')),16))),repeat(12,[
  append('particle x',random(-74,74)),append('particle y',V('fx y')),append('particle vx',div(random(-30,30),10)),append('particle vy',div(random(15,55),10))]),change('fx row',1)])])
 proc('lock',[call('detect spin'),setv('shape',shape(V('piece'),V('rotation'))),setv('tx',V('x')),setv('ty',V('y')),setv('i',0),
@@ -102,17 +118,17 @@ proc('lock',[call('detect spin'),setv('shape',shape(V('piece'),V('rotation'))),s
  change('LINES',V('cleared')),setv('awarded',0),
  If(eq(V('t spin'),1),[setv('awarded',mul(item('spin points',add(V('cleared'),1)),V('LEVEL'))),setv('notification','tspin'),setv('flash',42)],
  [If(gt(V('cleared'),0),[setv('awarded',mul(item('points',V('cleared')),V('LEVEL'))),setv('notification',join('clear',V('cleared'))),setv('flash',36)])]),
- change('SCORE',V('awarded')),If(gt(V('cleared'),0),[call('start clear fx')]),
+ change('SCORE',V('awarded')),If(gt(V('cleared'),0),[call('clear combo'),change('SCORE',V('combo bonus')),call('start clear fx')]),
  setv('LEVEL',add(floor(div(V('LINES'),10)),1)),setv('can hold',1),call('spawn')])
 proc('hold',[If(eq(V('can hold'),1),[setv('swap',V('HOLD')),setv('HOLD',V('piece')),If(eq(V('swap'),0),[call('spawn')],[
  setv('piece',V('swap')),setv('x',3),setv('y',0),setv('rotation',0),setv('last rotation',0),setv('fall',0),setv('ground ticks',0),setv('tx',3),setv('ty',0),setv('tr',0),call('test position'),
- If(eq(V('valid'),0),[setv('GAME OVER',1)])]),setv('can hold',0)])])
+ If(eq(V('valid'),0),[setv('GAME OVER',1),setv('COMBO',0),setv('combo expires',0)])]),setv('can hold',0)])])
 proc('draw piece',[setv('shape',shape(V('piece'),V('rotation'))),setv('tx',V('x')),setv('ty',V('draw y')),setv('i',0),
- repeat(16,[If(eq(cell(),1),coords()+stamp(add(-72,mul(V('cx'),16)),sub(152,mul(V('cy'),16)),add(V('piece'),V('draw style')))),change('i',1)])])
+ repeat(16,[If(eq(cell(),1),coords()+block_stamp(add(-72,mul(V('cx'),16)),sub(152,mul(V('cy'),16)),add(V('piece'),V('draw style')))),change('i',1)])])
 proc('mini',[setv('shape',shape(V('mini piece'),0)),setv('i',0),repeat(16,[If(eq(cell(),1),
- stamp(add(add(V('mini x'),mul(neg(either(eq(V('mini piece'),1),eq(V('mini piece'),4))),6)),mul(mod(V('i'),4),12)),sub(V('mini y'),mul(floor(div(V('i'),4)),12)),V('mini piece'))),change('i',1)])])
+ block_stamp(add(add(V('mini x'),mul(neg(either(eq(V('mini piece'),1),eq(V('mini piece'),4))),6)),mul(mod(V('i'),4),12)),sub(V('mini y'),mul(floor(div(V('i'),4)),12)),V('mini piece'))),change('i',1)])])
 proc('draw number',[setv('number text',join('000000',V('number value'))),setv('digit index',sub(R('operator_length',STRING=V('number text')),V('number digits'))),repeat(V('number digits'),[
- change('digit index',1),B('motion_gotoxy',{'X':inp(V('number x')),'Y':inp(V('number y'))}),
+ change('digit index',1),position(V('number x'),V('number y')),
  B('looks_switchcostumeto',{'COSTUME':inp(join('digit',R('operator_letter_of',LETTER=V('digit index'),STRING=V('number text'))))}),B('pen_stamp'),change('number x',14)])])
 proc('draw clear fx',[If(eq(V('fx active'),1),[
  If(lt(V('fx age'),20),[If(either(eq(length('clear rows'),4),eq(V('notification'),'tspin')),[setv('fx beam','quadbeam')],[setv('fx beam','beam')]),setv('fx row',1),repeat(length('clear rows'),
@@ -125,16 +141,19 @@ proc('draw clear fx',[If(eq(V('fx active'),1),[
  stamp(item('particle x',V('particle')),item('particle y',V('particle')),'spark')),change('particle',1)]),B('looks_cleargraphiceffects'),change('fx age',1),
  If(gt(V('fx age'),23),[setv('fx active',0)])])])
 
-render=[B('pen_clear'),setv('i',1),repeat(200,[If(gt(item('board',V('i')),0),stamp(add(-72,mul(mod(sub(V('i'),1),10),16)),sub(152,mul(floor(div(sub(V('i'),1),10)),16)),item('board',V('i')))),change('i',1)]),
+render=[call('update combo'),call('update camera'),B('pen_clear'),B('looks_setsizeto',{'SIZE':inp(ZOOM*100)})]+stamp(0,0,'interface')+[setv('i',1),repeat(200,[If(gt(item('board',V('i')),0),block_stamp(add(-72,mul(mod(sub(V('i'),1),10),16)),sub(152,mul(floor(div(sub(V('i'),1),10)),16)),item('board',V('i')))),change('i',1)]),
  setv('ghost',V('y')),setv('valid',1),until(eq(V('valid'),0),[setv('tx',V('x')),setv('ty',add(V('ghost'),1)),setv('tr',V('rotation')),call('test position'),If(eq(V('valid'),1),[change('ghost',1)])]),
  setv('draw style',7),setv('draw y',V('ghost')),call('draw piece'),setv('draw style',0),setv('draw y',V('y')),call('draw piece'),
- B('looks_setsizeto',{'SIZE':inp(70)}),If(gt(V('HOLD'),0),[setv('mini piece',V('HOLD')),setv('mini x',-180),setv('mini y',58),call('mini')]),
- setv('preview',1),repeat(length('bag'),[setv('mini piece',item('bag',V('preview'))),setv('mini x',144),setv('mini y',sub(113,mul(sub(V('preview'),1),39))),call('mini'),change('preview',1)]),B('looks_setsizeto',{'SIZE':inp(100)})]
-for value,digits,yy in [('SCORE',7,-9),('LINES',3,-60),('LEVEL',2,-103)]:
- render += [setv('number value',V(value)),setv('number digits',digits),setv('number x',-217),setv('number y',yy),call('draw number')]
+ B('looks_setsizeto',{'SIZE':inp(70*ZOOM)}),If(gt(V('HOLD'),0),[setv('mini piece',V('HOLD')),setv('mini x',-180),setv('mini y',58),call('mini')]),
+ setv('preview',1),repeat(length('bag'),[setv('mini piece',item('bag',V('preview'))),setv('mini x',144),setv('mini y',sub(113,mul(sub(V('preview'),1),39))),call('mini'),change('preview',1)]),B('looks_setsizeto',{'SIZE':inp(100*ZOOM)})]
+for value,digits,xx,yy in [('SCORE',7,-217,-9),('LINES',3,-217,-60),('LEVEL',2,-217,-103),('COMBO',2,-136,115)]:
+ render += [setv('number value',V(value)),setv('number digits',digits),setv('number x',xx),setv('number y',yy),call('draw number')]
+# A small timer strip under the combo label shows the remaining rolling window.
+render += [If(gt(V('COMBO'),0),[B('looks_setsizeto',{'SIZE':inp(mul(mul(div(sub(V('combo expires'),timer()),4),100),ZOOM))})]+stamp(-216,98,'combo timer')+[B('looks_setsizeto',{'SIZE':inp(100*ZOOM)})])]
 render += [call('draw clear fx'),If(gt(V('flash'),0),[change('flash',-1)]+stamp(0,30,V('notification'))),If(eq(V('GAME OVER'),1),stamp(0,0,'gameover'))]
+render += [B('looks_setsizeto',{'SIZE':inp(100)})]+raw_stamp(0,-166,join('selector',V('THEME')))+[B('looks_setsizeto',{'SIZE':inp(100*ZOOM)})]
 proc('render',render)
-proc('reset',[clear('board'),repeat(200,[append('board',0)]),clear('bag'),clear('clear rows'),setv('fx active',0),setv('fx age',0),setv('flash',0),
+proc('reset',[If(either(lt(V('THEME'),1),gt(V('THEME'),5)),[setv('THEME',1)]),call('apply theme'),setv('COMBO',0),setv('combo expires',0),setv('combo bonus',0),setv('shake ticks',0),setv('shake x',0),setv('shake y',0),clear('board'),repeat(200,[append('board',0)]),clear('bag'),clear('clear rows'),setv('fx active',0),setv('fx age',0),setv('flash',0),
  setv('SCORE',0),setv('LINES',0),setv('LEVEL',1),setv('HOLD',0),setv('GAME OVER',0),setv('can hold',1),setv('left ticks',0),setv('right ticks',0),
  setv('z previous',0),setv('w previous',0),setv('space previous',0),setv('c previous',0),call('spawn')])
 def edge(k,prev,ss):return [If(both(key(k),eq(V(prev),0)),ss),setv(prev,key(k))]
@@ -146,9 +165,19 @@ active += [change('fall',1),If(either(both(key('s'),eq(mod(V('fall'),2),0)),gt(V
  setv('dx',0),setv('dy',1),call('move'),If(eq(V('valid'),1),[If(key('s'),[change('SCORE',1)]),setv('fall',0)])]),
  setv('tx',V('x')),setv('ty',add(V('y'),1)),setv('tr',V('rotation')),call('test position'),If(eq(V('valid'),0),[change('ground ticks',1),
  If(gt(V('ground ticks'),25),[call('lock')])],[setv('ground ticks',0)])]
-loop=[If(key('r'),[call('reset')]),If(eq(V('GAME OVER'),0),active),call('render'),B('control_wait',{'DURATION':inp(.02)})]
+theme_controls=edge('t','t previous',[call('next theme')])
+for theme in range(1,6):
+ theme_controls+=edge(str(theme),'theme key '+str(theme),[setv('THEME',theme),call('apply theme')])
+mouse=(B('sensing_mousedown'),)
+clicks=[]
+for theme in range(1,6):
+ # Fixed footer hitboxes use raw Scratch mouse coordinates; camera shake does not affect them.
+ left=-232+(theme-1)*94
+ clicks += [If(both(both(gt((B('sensing_mousex'),),left),lt((B('sensing_mousex'),),left+88)),both(gt((B('sensing_mousey'),),-179),lt((B('sensing_mousey'),),-153))),[setv('THEME',theme),call('apply theme')])]
+theme_controls += [If(both(mouse,eq(V('mouse previous'),0)),clicks),setv('mouse previous',(B('sensing_mousedown'),))]
+loop=theme_controls+[If(key('r'),[call('reset')]),If(eq(V('GAME OVER'),0),active),call('render'),B('control_wait',{'DURATION':inp(.02)})]
 forever=B('control_forever');h=seq(loop);blocks[forever]['inputs']['SUBSTACK']=[2,h];blocks[h]['parent']=forever
-hat=B('event_whenflagclicked');h=seq([B('looks_hide'),B('looks_setsizeto',{'SIZE':inp(100)}),call('reset'),forever]);blocks[hat]['next']=h;blocks[h]['parent']=hat;blocks[hat].update(topLevel=True,x=20,y=20)
+hat=B('event_whenflagclicked');h=seq([B('looks_hide'),B('looks_setsizeto',{'SIZE':inp(100*ZOOM)}),call('reset'),forever]);blocks[hat]['next']=h;blocks[h]['parent']=hat;blocks[hat].update(topLevel=True,x=20,y=20)
 # establish parent pointers for reporter input blocks
 for k,b in list(blocks.items()):
  for v in b['inputs'].values():
@@ -157,9 +186,11 @@ assets={}
 def costume(name,svg,cx,cy):
  data=svg.encode();md=hashlib.md5(data).hexdigest();assets[md+'.svg']=data
  return dict(name=name,assetId=md,dataFormat='svg',md5ext=md+'.svg',rotationCenterX=cx,rotationCenterY=cy)
-from visuals import COLORS, block, arena, digit, gameover, badge, clear_beam, particle, svg, text, rect
-costumes=[costume(str(i+1),block(c),8,8) for i,c in enumerate(COLORS)]
-costumes += [costume('ghost'+str(i+1),block(c,True),8,8) for i,c in enumerate(COLORS)]
+from visuals import COLORS, THEME_NAMES, THEME_PALETTES, landscape, block, arena, digit, gameover, badge, clear_beam, particle, svg, text, rect
+costumes=[]
+for theme,palette in enumerate(THEME_PALETTES,1):
+ costumes += [costume('t'+str(theme)+'-'+str(i+1),block(c,theme=theme),8,8) for i,c in enumerate(palette)]
+ costumes += [costume('t'+str(theme)+'-'+str(i+8),block(c,True,theme=theme),8,8) for i,c in enumerate(palette)]
 costumes += [costume('digit'+str(i),digit(i),0,13) for i in range(10)]
 costumes += [costume('gameover',gameover(),80,160)]
 costumes += [costume('clear'+str(i),badge(i),65,15) for i in range(1,5)]
@@ -167,7 +198,15 @@ costumes += [costume('beam'+str(i),clear_beam(i),80,8) for i in range(10)]
 costumes += [costume('quadbeam'+str(i),clear_beam(i,True),80,8) for i in range(10)]
 costumes += [costume('spark',particle('#cceeff'),3,3)]
 costumes += [costume('tspin',svg(rect(0,0,136,34,'#141021',r=0,extra='fill-opacity=".94"')+text(68,23,'T-SPIN',20,'#d4a5ff',800,extra='text-anchor="middle" letter-spacing="2"'),136,34),68,17)]
-backdrop=costume('Arena',arena(),240,180)
+costumes += [costume('interface',arena(),240,180)]
+costumes += [costume('combo timer',svg(rect(0,0,110,2,'#b8eeff'),110,2),0,1)]
+for chosen in range(1,6):
+ buttons=[]
+ for i,name in enumerate(THEME_NAMES,1):
+  x=8+(i-1)*94
+  buttons += [rect(x,1,88,22,'#151322' if i==chosen else '#0d101c','#d3c3ff' if i==chosen else '#4a4b63',3,extra='fill-opacity=".94" stroke-width=".7"'),text(x+44,15,str(i)+'  '+name.upper(),7,'#ffffff' if i==chosen else '#b1b5cd',700,extra='text-anchor="middle"')]
+ costumes += [costume('selector'+str(chosen),svg(''.join(buttons),480,26),240,13)]
+backdrops=[costume('theme'+str(i),landscape(i),240,180) for i in range(1,6)]
 # Matrix order: I J L O S T Z. Rotation around SRS centers.
 bases=[[(0,1),(1,1),(2,1),(3,1)],[(0,0),(0,1),(1,1),(2,1)],[(2,0),(0,1),(1,1),(2,1)],[(1,0),(2,0),(1,1),(2,1)],[(1,0),(2,0),(0,1),(1,1)],[(1,0),(0,1),(1,1),(2,1)],[(0,0),(1,0),(1,1),(2,1)]]
 matrices=[]
@@ -181,7 +220,7 @@ for p,base in enumerate(bases):
 lists['shapes']=['shapes',matrices];lists['kick x']=['kick x',[0,-1,1,-2,2,0,0]];lists['kick y']=['kick y',[0,0,0,0,0,-1,-2]];lists['points']=['points',[100,300,500,800]];lists['spin points']=['spin points',[400,800,1200,1600]]
 for n in ['ground ticks']:var(n)
 monitors=[]
-stage=dict(isStage=True,name='Stage',variables={},lists={},broadcasts={},blocks={},comments={},currentCostume=0,costumes=[backdrop],sounds=[],volume=100,layerOrder=0,tempo=60,videoTransparency=50,videoState='on',textToSpeechLanguage=None)
+stage=dict(isStage=True,name='Stage',variables={},lists={},broadcasts={},blocks={},comments={},currentCostume=0,costumes=backdrops,sounds=[],volume=100,layerOrder=0,tempo=60,videoTransparency=50,videoState='on',textToSpeechLanguage=None)
 sprite=dict(isStage=False,name='Engine',variables=variables,lists=lists,broadcasts={},blocks=blocks,comments={},currentCostume=0,costumes=costumes,sounds=[],volume=100,layerOrder=1,visible=False,x=0,y=0,size=100,direction=90,draggable=False,rotationStyle='all around')
 project=dict(targets=[stage,sprite],monitors=monitors,extensions=['pen'],meta={'semver':'3.0.0','vm':'5.0.300','agent':'Stack Flow builder'})
 ROOT.joinpath('dist').mkdir(exist_ok=True)
