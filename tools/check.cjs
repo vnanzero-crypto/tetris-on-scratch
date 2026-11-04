@@ -205,6 +205,58 @@ const fs=require('fs');
  assert(get('SCREEN')==='menu'&&Number(get('run scores')[0])===5432&&Number(get('run ids')[0])===stopId&&get('run ids').length===stopCount,'green-flag startup preserves the stopped run without adding a duplicate');
  assert(get('run status')[0]==='Stopped'&&Number(get('BEST SCORE'))===5432,'green-flag startup labels the interrupted run Stopped and preserves the lifetime best');
 
+ // Ambient effects and hover previews are presentation state: they must never
+ // move a piece, consume the bag, award points or change a saved run.
+ const presentationGuardNames=['board','bag','piece','x','y','rotation','HOLD','can hold','last rotation','SCORE','LINES','LEVEL','COMBO','combo expires','THEME','history page','has game','GAME OVER','run record open','run serial','run max combo','BEST SCORE',...historyLists];
+ const presentationState=()=>JSON.stringify(presentationGuardNames.map(name=>get(name)));
+ const beforePresentation=presentationState();
+ const ambientNames=['ambient x','ambient y','ambient speed'];
+ run('init ambient');
+ assert(ambientNames.every(name=>get(name).length===24),'ambient initialization creates exactly twenty-four aligned particles');
+ assert(get('ambient x').every(value=>Number.isFinite(Number(value))&&Number(value)>=-235&&Number(value)<=235)&&get('ambient y').every(value=>Number.isFinite(Number(value))&&Number(value)>=-175&&Number(value)<=175),'ambient particles start within the visible stage');
+ assert(get('ambient speed').every(value=>Number.isFinite(Number(value))&&Number(value)>=0.15&&Number(value)<=0.6),'ambient particles have slow positive floating speeds');
+ run('init ambient');run('init ambient');
+ assert(ambientNames.every(name=>get(name).length===24),'reinitializing ambient particles replaces the field without accumulating clones');
+ set('ambient x',Array.from({length:24},(_,i)=>-200+i*17));
+ set('ambient y',Array(24).fill(0));set('ambient speed',Array(24).fill(0.5));
+ get('ambient y')[0]=177.75;get('ambient y')[1]=-178;set('SCREEN','play');
+ run('draw ambient');
+ assert(Number(get('ambient y')[0])===-178,'ambient particles crossing the top wrap to the bottom');
+ assert(Math.abs(Number(get('ambient y')[1])+177.5)<0.000001&&Math.abs(Number(get('ambient y')[2])-0.5)<0.000001,'ambient particles float upward at their own speed');
+ assert(ambientNames.every(name=>get(name).length===24)&&get('ambient y').every(value=>Number(value)>=-178&&Number(value)<=178),'ambient animation retains a bounded, fixed-size particle field');
+ for(const name of ambientNames){
+  set(name,[]);run('draw ambient');
+  assert(ambientNames.every(particleList=>get(particleList).length===24),'drawing repairs a missing '+name+' list after a restart');
+ }
+ assert(presentationState()===beforePresentation,'ambient initialization and animation preserve gameplay and saved history');
+
+ const mouse=rt.ioDevices.mouse;
+ function hoverAt(screen,canvasX,canvasY,expected,label){
+  set('SCREEN',screen);mouse._scratchX=canvasX-240;mouse._scratchY=180-canvasY;
+  run('update hover');
+  assert(Number(get('hover object'))===expected,label);
+  run('draw hover');
+  assert(get('SCREEN')===screen,'hover preview keeps the '+screen+' screen open');
+ }
+ hoverAt('menu',120,130,1,'Play has a matching menu hover object');
+ hoverAt('menu',120,177,2,'New Run has a matching menu hover object');
+ hoverAt('menu',120,219,3,'Themes has a matching menu hover object');
+ hoverAt('menu',120,261,4,'Run History has a matching menu hover object');
+ hoverAt('menu',12,130,0,'moving away from menu actions clears the hover object');
+ hoverAt('menu',120,155,0,'the gap between menu actions has no stale hover object');
+ for(let theme=0;theme<10;theme++){
+  hoverAt('themes',52+94*(theme%5),127+74*Math.floor(theme/5),11+theme,'theme '+(theme+1)+' has its own hover preview');
+ }
+ hoverAt('themes',50,28,5,'theme gallery Back has a navigation hover object');
+ hoverAt('themes',105,127,0,'theme card gaps clear the previous theme preview');
+ hoverAt('history',50,28,5,'history Back has a navigation hover object');
+ hoverAt('history',146,302,6,'history Previous has a navigation hover object');
+ hoverAt('history',334,302,7,'history Next has a navigation hover object');
+ hoverAt('history',240,302,0,'the history pagination gap has no stale preview');
+ hoverAt('play',120,130,0,'gameplay never shows a menu hover object');
+ assert(presentationState()===beforePresentation,'hover detection and animated previews preserve the board, bag, score, combos and saved runs');
+ set('SCREEN','menu');
+
  // Saving the .sb3 must carry personal history into a fresh Scratch VM as well.
  const exportedProject=await vm.saveProjectSb3();
  const restoredVm=new VM();restoredVm.attachStorage(new ScratchStorage());

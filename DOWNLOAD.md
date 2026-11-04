@@ -14,6 +14,8 @@ Press **M** or click the top-left **Menu** button to return at any time. The men
 
 Open **Themes** from the main menu for ten unique looks: Galaxy, Mountains, Ocean, Sunset, Neon City, Black, Sakura, Volcano, Aurora, and Blueprint. The theme gallery supports **1–9 / 0** and T to cycle. On-screen control hints are hidden; the live input shows only the four arrows in a keyboard layout. Combos appear in the sidebar with names such as 3 NICE!, 5 GREAT!, and 7 CRAZY!, through 15 BEYOND LIMITS!.
 
+Menus now have animated hover objects, and decorative particles float around the screen. SINGLE/DOUBLE/TRIPLE/QUAD and T-SPIN captions appear in the sidebar; generic menu slogans have been removed.
+
 ## Keep your scores
 
 Open **Run History** from the main menu to compare your newest 20 runs and personal best. Scores survive **Stop** and restarting with the green flag. **Save your own Scratch project or download the played `.sb3` before closing Scratch** to retain that history later. Loading a fresh download replaces the existing project's saved history.

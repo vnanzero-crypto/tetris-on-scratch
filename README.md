@@ -6,6 +6,8 @@ A single-player falling-block game inspired by TETR.IO's minimal competitive lay
 
 ![Main menu](docs/menu.png)
 
+![Run History hover preview](docs/hover-history.png)
+
 ![Gameplay preview](docs/preview.png)
 
 ## Main menu and pausing
@@ -13,6 +15,14 @@ A single-player falling-block game inspired by TETR.IO's minimal competitive lay
 The green flag opens the main menu with **Play/Resume**, **New Run**, **Themes**, and **Run History**. Press **Space** for Play/Resume or **N** for a new run. Click **Themes** (or press T) to open the dedicated ten-theme gallery; click **Run History** (or press H) to compare saved runs. Each submenu has a Back button; M also returns to the main menu.
 
 During play or after game over, press **M** or click the upper-left **Menu** button to return. The menu pauses the board, falling piece, effects, and combo countdown; **Resume** restores the same run and remaining combo time. **New Run** starts over with the chosen theme. Finished runs cannot be resumed. M also resumes an available run from the menu.
+
+## Menu objects and ambient motion
+
+The main menu uses an asymmetric action rail and an orbital object area. Hovering Play/Resume reveals a tetromino object, New Run a fresh block, Themes a palette planet, and Run History a trophy. The previews animate while the pointer stays over a target. Theme cards each reveal a related object; Back and history-page buttons reveal navigation objects. Hovering never selects an item or changes the run.
+
+Twenty-four decorative motes drift and wrap around the menus and outside the playfield. They do not cover the active board or affect scoring, input, combos, saved history, or particle bursts from line clears. The decorative particle arrays stay bounded and are reinitialized on the green flag.
+
+Menu taglines have been removed. Clear captions such as SINGLE, DOUBLE, TRIPLE, QUAD and T-SPIN now appear in the left sidebar directly below the combo and above the hold area; they no longer cover the middle of the board.
 
 ## Controls
 
@@ -115,7 +125,7 @@ Python 3.10+ builds the project without Python dependencies or network access:
 python3 tools/build.py
 ```
 
-The builder writes `dist/stack-flow.sb3`, containing the Scratch blocks and all 261 SVG assets. `stack-flow.sb3` at the repository root is the published download; after rebuilding, copy the output there when preparing a release.
+The builder writes `dist/stack-flow.sb3`, containing the Scratch blocks and all 415 SVG assets. `stack-flow.sb3` at the repository root is the published download; after rebuilding, copy the output there when preparing a release.
 
 To run the gameplay checks with dependencies outside the checkout:
 
@@ -124,6 +134,8 @@ npm install --prefix /tmp/stack-flow-check scratch-vm@5.0.300 scratch-storage@4.
 NODE_PATH=/tmp/stack-flow-check/node_modules node tools/check.cjs
 ```
 
-All 132 Scratch VM assertions passed, covering board state, collisions, movement, rotation scoring, hold, T-spin eligibility and bonuses, ordinary and four-line clears, animation row tracking/expiry, four-second combo boundaries and bonus scoring, camera shake limits and settling, all ten theme palettes and backdrops, theme cycling, preserved game state, menu pause/resume and new-run behavior, paused combo deadlines, sidebar animation lifecycle, combo milestone names, game over, capped/aligned score history, monotonic personal best, Stop/green-flag persistence, and actual `.sb3` save/reload roundtrips. Headless tests intentionally omit a renderer and may emit costume-renderer warnings.
+All 190 Scratch VM assertions passed, covering board state, collisions, movement, rotation scoring, hold, T-spin eligibility and bonuses, ordinary and four-line clears, animation row tracking/expiry, four-second combo boundaries and bonus scoring, camera shake limits and settling, all ten theme palettes and backdrops, theme cycling, preserved game state, menu pause/resume and new-run behavior, paused combo deadlines, sidebar animation lifecycle, combo milestone names, game over, capped/aligned score history, monotonic personal best, Stop/green-flag persistence, actual `.sb3` save/reload roundtrips, bounded ambient-particle recovery and wrapping, every hover target, and presentation-state isolation. Headless tests intentionally omit a renderer and may emit costume-renderer warnings.
 
 Chromium checks separately exercised the dedicated theme gallery and all ten cards, 0 for theme ten, cycling, pure Black gameplay, arrow-only input highlighting and physical layout, real clear chains through 15 with the requested milestone names, personal-best checkpointing, Stop/green-flag score preservation, history paging, and export/reload of played history. Earlier browser checks also exercised both WASD and arrows, menu pause/resume, and key edge handling. Previews use scripted board and score fixtures.
+
+The latest Chromium pass also verified all four main-menu object previews, animation with a stationary pointer, all ten theme hover previews without changing selection, navigation hover objects, particles outside the board, clear captions exclusively in the sidebar, unchanged line/combo scoring, and saved scores after Stop/green flag. The removed menu slogans are absent from every embedded SVG.
