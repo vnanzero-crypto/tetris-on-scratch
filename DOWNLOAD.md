@@ -1,4 +1,4 @@
-# Play Stack / Flow in Scratch
+# Download and play
 
 1. Open [stack-flow.sb3](https://github.com/vnanzero-crypto/tetris-on-scratch/blob/main/stack-flow.sb3).
 2. Click **Download raw file** (the down-arrow button).
@@ -6,6 +6,10 @@
 4. Choose **File → Load from your computer** and select the downloaded `.sb3` file.
 5. Click the green flag.
 
-Controls: arrow keys to move, soft drop, and rotate clockwise; Z rotates counterclockwise; Space hard drops; C holds; R restarts.
+## New controls
 
-An original single-player game inspired by TETR.IO, with custom vector graphics, hold, ghost pieces, seven-bag randomization, scoring, line clearing, and a game-over screen. This is not a full reproduction of TETR.IO or an affiliated release.
+**A/D** move · **S** soft drop · **W** rotate clockwise · **Z** rotate counterclockwise · **Space** hard drop · **C** hold · **R** restart.
+
+Successful rotations award **+5 points**. T-spins award an additional level-scaled bonus. The updated version includes a minimal TETR.IO-inspired interface, animated clear beams, and particle bursts.
+
+If you have the old version in Scratch, load the new `.sb3` file to replace it. Downloading a new file does not automatically update a previously saved Scratch project.
