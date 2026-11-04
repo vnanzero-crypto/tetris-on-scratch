@@ -16,8 +16,10 @@ def svg(body, w=480, h=360):
     return f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">{body}</svg>'
 
 
-def text(x, y, s, size=10, color='#eeeeef', weight=500, extra=''):
-    return f'<text x="{x}" y="{y}" font-family="DejaVu Sans Condensed,Arial,sans-serif" font-size="{size}" font-weight="{weight}" fill="{color}" {extra}>{escape(s)}</text>'
+def text(x, y, s, size=10, color='#eeeeef', weight=300, extra=''):
+    # Keep UI lettering slender on Scratch's portable browser font stack.
+    weight = min(int(weight), 400)
+    return f'<text x="{x}" y="{y}" font-family="Segoe UI Light,DejaVu Sans,Arial,Helvetica,sans-serif" font-size="{size}" font-weight="{weight}" fill="{color}" {extra}>{escape(s)}</text>'
 
 
 def rect(x, y, w, h, fill, stroke='none', r=0, extra=''):
@@ -64,8 +66,6 @@ def arena():
         '<path d="M156 332V344H169 M311 344H324V332" fill="none" stroke="#a998d1" stroke-width=".7" stroke-opacity=".6"/>',
         text(24, 34, 'STACK / FLOW', 14, '#f3f3f5', 900, 'letter-spacing="1" textLength="112" lengthAdjust="spacingAndGlyphs"'),
         text(24, 49, 'MARATHON', 9, '#aaa7bb', 700, 'letter-spacing="2.5"'),
-        text(24, 72, 'COMBO', 8.5, '#b7a6dd', 800, 'letter-spacing="1.4"'),
-        rect(24, 82, 110, 2, '#423b52'),
         text(134, 101, 'HOLD', 11, '#f0eff5', 800, 'text-anchor="end" letter-spacing="1.2"'),
         text(24, 101, '[ C ]', 7, '#7f7b89', 600),
         '<path d="M24 108H135" stroke="#fff" stroke-opacity=".15" stroke-width=".6"/>',
@@ -76,13 +76,14 @@ def arena():
             f'<path d="M24 {y+34}H133" stroke="#fff" stroke-opacity=".08" stroke-width=".6"/>',
         ]
     b += [
-        text(24, 311, 'A / D', 7.5, '#e2dfe9', 800), text(71, 311, 'MOVE', 7, '#918b9d', 600),
-        text(24, 323, 'W / Z', 7.5, '#e2dfe9', 800), text(71, 323, 'ROTATE', 7, '#918b9d', 600),
-        text(24, 335, 'S / SPACE', 7.1, '#e2dfe9', 800), text(81, 335, 'DROP', 7, '#918b9d', 600),
+        text(24, 311, 'A D / ← →', 7.2, '#e2dfe9', 300), text(95, 311, 'MOVE', 6.7, '#918b9d', 300),
+        text(24, 323, 'W / ↑ / Z', 7.2, '#e2dfe9', 300), text(95, 323, 'ROTATE', 6.7, '#918b9d', 300),
+        text(24, 335, 'S ↓ / SPACE', 7.2, '#e2dfe9', 300), text(106, 335, 'DROP', 6.7, '#918b9d', 300),
         text(348, 35, 'NEXT', 12, '#f1eff6', 900, 'letter-spacing="1.8"'),
         '<path d="M347 43H452" stroke="#fff" stroke-opacity=".15" stroke-width=".6"/>',
-        # A subtle bracket, rather than six separate rounded cards.
-        '<path d="M349 52H345V285H349" stroke="#fff" stroke-opacity=".10" stroke-width=".7" fill="none"/>',
+        # Four previews leave a live input display underneath.
+        '<path d="M349 52H345V184H349" stroke="#fff" stroke-opacity=".10" stroke-width=".7" fill="none"/>',
+        text(348, 193, 'LIVE INPUT', 7.5, '#a4a3b8', 300, 'letter-spacing="1.5"'),
         text(348, 310, 'ENDLESS', 10, '#d4cede', 800, 'letter-spacing="1.7"'),
         text(348, 324, '7-BAG RANDOMIZER', 6.8, '#77717f', 600, 'letter-spacing=".5"'),
         text(348, 337, 'R  RESTART', 7.2, '#aaa4b6', 700, 'letter-spacing=".8"'),
@@ -92,7 +93,7 @@ def arena():
 
 def digit(d):
     """16x26 cells: condensed white numerals sit on the fixed HUD positions."""
-    return svg(text(0, 21, str(d), 24, '#f5f3fa', 800, 'textLength="14" lengthAdjust="spacingAndGlyphs"'), 16, 26)
+    return svg(text(0, 21, str(d), 24, '#f5f3fa', 300, 'textLength="13" lengthAdjust="spacingAndGlyphs"'), 16, 26)
 
 
 def gameover():
@@ -226,3 +227,81 @@ def landscape(theme=1):
             b.append(f'<path d="M240 302L{x} 360" stroke="#39567e" stroke-width=".7" opacity=".42"/>')
         b += [rect(5,225,27,9,'#793b82',extra='fill-opacity=".6"'),text(18.5,232,'NIGHT',5,'#e3a8e5',800,'text-anchor="middle" letter-spacing=".4"'),rect(445,238,29,14,'#16516b',extra='fill-opacity=".7"'),text(459.5,248,'PLAY',7,'#98ebf4',800,'text-anchor="middle" letter-spacing=".5"')]
     return svg(''.join(b))
+
+
+
+def menu(theme=1, resume=False):
+    """Full-stage menu overlay. All button positions are in unscaled canvas space."""
+    theme = max(1, min(5, int(theme)))
+    accent = THEME_PALETTES[theme-1][5]
+    b = [rect(0, 0, 480, 360, '#060a14', extra='fill-opacity=".56"')]
+    b += [rect(116, 26, 248, 191, '#080d19', accent, 4, extra='fill-opacity=".76" stroke-opacity=".24" stroke-width=".6"')]
+    b += [text(240, 65, 'STACK / FLOW', 28, '#f5f3ff', 200, 'text-anchor="middle" letter-spacing="3.2"'),
+          text(240, 87, 'A LITTLE FOCUS. A LITTLE FLOW.', 7.2, '#aeb5ce', 300, 'text-anchor="middle" letter-spacing="1.9"'),
+          text(240, 112, 'YOUR RUN IS PAUSED' if resume else 'READY WHEN YOU ARE', 7.5, accent, 300, 'text-anchor="middle" letter-spacing="1.6"')]
+    b += [rect(140, 130, 200, 38, 'none', accent, 3, extra='stroke-opacity=".15" stroke-width="3"'),
+          rect(142, 132, 196, 34, '#15192a', accent, 2, extra='fill-opacity=".94" stroke-opacity=".85" stroke-width=".8"'),
+          text(240, 154, 'RESUME' if resume else 'PLAY', 15, '#f8f7ff', 300, 'text-anchor="middle" letter-spacing="4"'),
+          rect(142, 174, 196, 26, '#0c111e', '#58627a', 2, extra='fill-opacity=".8" stroke-width=".6"'),
+          text(240, 191, 'NEW RUN', 10, '#b4bed5', 300, 'text-anchor="middle" letter-spacing="2.8"')]
+    b += [rect(0, 228, 480, 69, '#080d17', extra='fill-opacity=".76"'),
+          text(240, 244, 'CHOOSE YOUR WORLD', 8, '#d3d8ec', 300, 'text-anchor="middle" letter-spacing="2.5"')]
+    for i, name in enumerate(THEME_NAMES, 1):
+        x = 8+(i-1)*94
+        selected = i == theme
+        c = THEME_PALETTES[i-1][5]
+        b += [rect(x, 252, 88, 26, '#171729' if selected else '#0c1220', c if selected else '#4a5267', 2,
+                   extra=f'fill-opacity=".94" stroke-opacity="{1 if selected else .55}" stroke-width="{1 if selected else .5}"'),
+              text(x+44, 268, str(i)+'  '+name.upper(), 6.8, '#ffffff' if selected else '#aeb8d0', 300,
+                   'text-anchor="middle" letter-spacing=".15"')]
+        for j, color in enumerate(THEME_PALETTES[i-1]):
+            b.append(rect(x+7+j*10.6, 283, 9, 1, color, extra='fill-opacity=".8"'))
+    b += [text(240, 316, 'SPACE  PLAY / RESUME     N  NEW RUN     M  MENU', 7.2, '#c3cbe0', 300,
+               'text-anchor="middle" letter-spacing=".7"'),
+          text(240, 336, 'WASD + ARROWS     Z ROTATE BACK     C HOLD     SPACE DROP', 6.5, '#909cb8', 300,
+               'text-anchor="middle" letter-spacing=".45"')]
+    return svg(''.join(b))
+
+
+def menu_button():
+    """92x24 fixed screen-space menu button, centered at (46,12)."""
+    return svg(rect(.5, .5, 91, 23, '#0b1120', '#91a1c2', 3, extra='fill-opacity=".9" stroke-opacity=".55" stroke-width=".7"')
+               + text(46, 15.5, '[ M ]  MENU', 8.3, '#e1e7f8', 300, 'text-anchor="middle" letter-spacing="1"'), 92, 24)
+
+
+def keycap(label, pressed=False):
+    """54x20 action-key indicator, centered at (27,10)."""
+    fill = '#604c88' if pressed else '#0c1220'
+    edge = '#d9c2ff' if pressed else '#65708b'
+    fg = '#ffffff' if pressed else '#a8b3cd'
+    b = [rect(.5, .5, 53, 19, fill, edge, 2, extra=f'fill-opacity="{.95 if pressed else .8}" stroke-opacity="{1 if pressed else .4}" stroke-width=".7"')]
+    if pressed:
+        b += [rect(2, 2, 50, 16, 'none', '#eadfff', 1, extra='stroke-opacity=".25" stroke-width=".5"'),
+              '<path d="M5 17H49" stroke="#d6efff" stroke-width=".8" stroke-opacity=".65"/>']
+    b.append(text(27, 13.6, str(label), 7.7 if len(str(label))<7 else 6.4, fg, 300,
+                  'text-anchor="middle" letter-spacing=".4"'))
+    return svg(''.join(b), 54, 20)
+
+
+def combo_banner(frame):
+    """160x60 combo pulse, 12 frames; the numeric count is drawn by the engine."""
+    f = max(0, min(11, int(frame)))
+    p = f/11
+    alpha = .9-(p*.35)
+    cx, cy = 80, 30
+    b = [rect(0, 0, 160, 60, '#0a1020', extra='fill-opacity=".78"')]
+    # Expanding diamond and split rails suggest a kinetic burst without filters.
+    radius = 12+f*2.2
+    b += [f'<path d="M{cx} {cy-radius}L{cx+radius*2} {cy}L{cx} {cy+radius}L{cx-radius*2} {cy}Z" fill="none" stroke="#b48aff" stroke-width=".8" opacity="{(1-p)*.5:.3f}"/>']
+    reach = 20+f*4
+    for side in (-1, 1):
+        x1 = cx+side*18
+        x2 = cx+side*reach
+        b += [f'<path d="M{x1} 6H{x2} M{x1} 54H{x2}" stroke="#b9edff" stroke-width=".7" opacity="{alpha:.3f}"/>']
+    for i in range(6):
+        x = 14+i*25
+        y = 8 if i%2 else 51
+        drift = (f*.65)*(1 if i%2 else -1)
+        b.append(f'<path d="M{x+drift-1.4} {y}L{x+drift} {y-2}L{x+drift+1.4} {y}L{x+drift} {y+2}Z" fill="#d5b8ff" opacity="{(1-p)*.7:.3f}"/>')
+    b += [text(80, 16, 'COMBO', 11.5, '#dcc9ff', 300, 'text-anchor="middle" letter-spacing="5"')]
+    return svg(''.join(b), 160, 60)

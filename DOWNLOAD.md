@@ -4,12 +4,14 @@
 2. Click **Download raw file** (the down-arrow button).
 3. Open https://scratch.mit.edu/projects/editor/ .
 4. Choose **File → Load from your computer** and select the downloaded `.sb3` file.
-5. Click the green flag.
+5. Click the green flag, choose a theme in the main menu, and click **Play**.
 
-## New controls
+## Controls and menu
 
-**A/D** move · **S** soft drop · **W** rotate clockwise · **Z** rotate counterclockwise · **Space** hard drop · **C** hold · **R** restart · **1–5** select theme · **T** next theme.
+**A/D or Left/Right** move · **S or Down** soft drop · **W or Up** rotate clockwise · **Z** rotate counterclockwise · **Space** hard drop · **C** hold · **R** restart.
 
-Successful rotations award **+5 points**. T-spins award an additional level-scaled bonus. The updated version includes a smaller 82% game view, a gentle line-clear shake, four-second combo chains and bonuses, animated clear beams, and particle bursts. Click the bottom buttons or press 1–5 for Galaxy, Mountains, Ocean, Sunset, and Neon City themes. Each changes both block artwork and the background.
+Press **M** or click the top-left **Menu** button to return at any time. The menu pauses the run and combo countdown. **Resume** continues; **New Run** starts over. In the menu, **Space** plays/resumes and **N** starts a new run.
+
+Theme selection is in the main menu: click the buttons or press **1–5** for Galaxy, Mountains, Ocean, Sunset, or Neon City. **T** cycles themes. The new interface has slimmer typography, central animated combos, and a live input display.
 
 If you have the old version in Scratch, load the new `.sb3` file to replace it. Downloading a new file does not automatically update a previously saved Scratch project.

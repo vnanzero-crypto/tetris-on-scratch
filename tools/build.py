@@ -31,6 +31,9 @@ def either(a,b):return R('operator_or',OPERAND1=a,OPERAND2=b)
 def both(a,b):return R('operator_and',OPERAND1=a,OPERAND2=b)
 def neg(a):return R('operator_not',OPERAND=a)
 def key(k):return R('sensing_keypressed',KEY_OPTION=k)
+def held(k):
+ aliases={'a':'left arrow','d':'right arrow','w':'up arrow','s':'down arrow'}
+ return either(key(k),key(aliases[k])) if k in aliases else key(k)
 def setv(n,v):return B('data_setvariableto',{'VALUE':inp(v)},{'VARIABLE':[n,var(n)]})
 def change(n,v):return B('data_changevariableby',{'VALUE':inp(v)},{'VARIABLE':[n,var(n)]})
 def append(n,v):return B('data_addtolist',{'ITEM':inp(v)},{'LIST':[n,lst(n)]})
@@ -68,13 +71,17 @@ def raw_stamp(px,py,p):return [B('motion_gotoxy',{'X':inp(px),'Y':inp(py)}),B('l
 def stamp(px,py,p):return [position(px,py),B('looks_switchcostumeto',{'COSTUME':inp(p)}),B('pen_stamp')]
 def block_stamp(px,py,p):return stamp(px,py,join(join('t',V('THEME')),join('-',p)))
 def timer():return (B('sensing_timer'),)
+def resize(inputs):
+ # Scratch clamps scale using the current costume. Use the full-size interface
+ # while sizing, so thin timer bars and tiny sparks do not enlarge later stamps.
+ return repeat(1,[B('looks_switchcostumeto',{'COSTUME':inp('interface')}),B('looks_setsizeto',inputs)])
 def effect(name,value):return B('looks_seteffectto',{'VALUE':inp(value)},{'EFFECT':[name,None]})
 def out_of_bounds(x,y):return either(either(lt(V(x),0),gt(V(x),9)),either(lt(V(y),0),gt(V(y),19)))
 
 # Four-second rolling combo window uses Scratch's real clock, not frame counts.
-proc('update combo',[If(both(gt(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',0),setv('combo expires',0)])])
+proc('update combo',[If(both(gt(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',0),setv('combo expires',0),setv('combo animating',0)])])
 proc('clear combo',[If(either(eq(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',1)],[change('COMBO',1)]),
- setv('combo expires',add(timer(),4)),setv('combo bonus',mul(mul(sub(V('COMBO'),1),50),V('LEVEL')))])
+ setv('combo pulse',0),setv('combo animating',1),setv('combo expires',add(timer(),4)),setv('combo bonus',mul(mul(sub(V('COMBO'),1),50),V('LEVEL')))])
 proc('update camera',[setv('shake x',0),setv('shake y',0),If(gt(V('shake ticks'),0),[
  setv('shake amount',mul(div(V('shake ticks'),10),1.6)),
  If(eq(mod(V('shake ticks'),2),0),[setv('shake x',V('shake amount'))],[setv('shake x',sub(0,V('shake amount')))]),
@@ -129,7 +136,7 @@ proc('mini',[setv('shape',shape(V('mini piece'),0)),setv('i',0),repeat(16,[If(eq
  block_stamp(add(add(V('mini x'),mul(neg(either(eq(V('mini piece'),1),eq(V('mini piece'),4))),6)),mul(mod(V('i'),4),12)),sub(V('mini y'),mul(floor(div(V('i'),4)),12)),V('mini piece'))),change('i',1)])])
 proc('draw number',[setv('number text',join('000000',V('number value'))),setv('digit index',sub(R('operator_length',STRING=V('number text')),V('number digits'))),repeat(V('number digits'),[
  change('digit index',1),position(V('number x'),V('number y')),
- B('looks_switchcostumeto',{'COSTUME':inp(join('digit',R('operator_letter_of',LETTER=V('digit index'),STRING=V('number text'))))}),B('pen_stamp'),change('number x',14)])])
+ B('looks_switchcostumeto',{'COSTUME':inp(join('digit',R('operator_letter_of',LETTER=V('digit index'),STRING=V('number text'))))}),B('pen_stamp'),change('number x',V('number spacing'))])])
 proc('draw clear fx',[If(eq(V('fx active'),1),[
  If(lt(V('fx age'),20),[If(either(eq(length('clear rows'),4),eq(V('notification'),'tspin')),[setv('fx beam','quadbeam')],[setv('fx beam','beam')]),setv('fx row',1),repeat(length('clear rows'),
  stamp(0,sub(152,mul(item('clear rows',V('fx row')),16)),join(V('fx beam'),floor(div(V('fx age'),2))))+[change('fx row',1)])]),
@@ -141,43 +148,65 @@ proc('draw clear fx',[If(eq(V('fx active'),1),[
  stamp(item('particle x',V('particle')),item('particle y',V('particle')),'spark')),change('particle',1)]),B('looks_cleargraphiceffects'),change('fx age',1),
  If(gt(V('fx age'),23),[setv('fx active',0)])])])
 
-render=[call('update combo'),call('update camera'),B('pen_clear'),B('looks_setsizeto',{'SIZE':inp(ZOOM*100)})]+stamp(0,0,'interface')+[setv('i',1),repeat(200,[If(gt(item('board',V('i')),0),block_stamp(add(-72,mul(mod(sub(V('i'),1),10),16)),sub(152,mul(floor(div(sub(V('i'),1),10)),16)),item('board',V('i')))),change('i',1)]),
+render=[setv('number spacing',14),call('update combo'),call('update camera'),B('pen_clear'),resize({'SIZE':inp(ZOOM*100)})]+stamp(0,0,'interface')+[setv('i',1),repeat(200,[If(gt(item('board',V('i')),0),block_stamp(add(-72,mul(mod(sub(V('i'),1),10),16)),sub(152,mul(floor(div(sub(V('i'),1),10)),16)),item('board',V('i')))),change('i',1)]),
  setv('ghost',V('y')),setv('valid',1),until(eq(V('valid'),0),[setv('tx',V('x')),setv('ty',add(V('ghost'),1)),setv('tr',V('rotation')),call('test position'),If(eq(V('valid'),1),[change('ghost',1)])]),
  setv('draw style',7),setv('draw y',V('ghost')),call('draw piece'),setv('draw style',0),setv('draw y',V('y')),call('draw piece'),
- B('looks_setsizeto',{'SIZE':inp(70*ZOOM)}),If(gt(V('HOLD'),0),[setv('mini piece',V('HOLD')),setv('mini x',-180),setv('mini y',58),call('mini')]),
- setv('preview',1),repeat(length('bag'),[setv('mini piece',item('bag',V('preview'))),setv('mini x',144),setv('mini y',sub(113,mul(sub(V('preview'),1),39))),call('mini'),change('preview',1)]),B('looks_setsizeto',{'SIZE':inp(100*ZOOM)})]
-for value,digits,xx,yy in [('SCORE',7,-217,-9),('LINES',3,-217,-60),('LEVEL',2,-217,-103),('COMBO',2,-136,115)]:
+ resize({'SIZE':inp(70*ZOOM)}),If(gt(V('HOLD'),0),[setv('mini piece',V('HOLD')),setv('mini x',-180),setv('mini y',58),call('mini')]),
+ setv('preview',1),repeat(4,[If(lt(V('preview'),add(length('bag'),1)),[setv('mini piece',item('bag',V('preview'))),setv('mini x',144),setv('mini y',sub(113,mul(sub(V('preview'),1),31))),call('mini')]),change('preview',1)]),resize({'SIZE':inp(100*ZOOM)})]
+for value,digits,xx,yy in [('SCORE',7,-217,-9),('LINES',3,-217,-60),('LEVEL',2,-217,-103)]:
  render += [setv('number value',V(value)),setv('number digits',digits),setv('number x',xx),setv('number y',yy),call('draw number')]
-# A small timer strip under the combo label shows the remaining rolling window.
-render += [If(gt(V('COMBO'),0),[B('looks_setsizeto',{'SIZE':inp(mul(mul(div(sub(V('combo expires'),timer()),4),100),ZOOM))})]+stamp(-216,98,'combo timer')+[B('looks_setsizeto',{'SIZE':inp(100*ZOOM)})])]
-render += [call('draw clear fx'),If(gt(V('flash'),0),[change('flash',-1)]+stamp(0,30,V('notification'))),If(eq(V('GAME OVER'),1),stamp(0,0,'gameover'))]
-render += [B('looks_setsizeto',{'SIZE':inp(100)})]+raw_stamp(0,-166,join('selector',V('THEME')))+[B('looks_setsizeto',{'SIZE':inp(100*ZOOM)})]
-proc('render',render)
-proc('reset',[If(either(lt(V('THEME'),1),gt(V('THEME'),5)),[setv('THEME',1)]),call('apply theme'),setv('COMBO',0),setv('combo expires',0),setv('combo bonus',0),setv('shake ticks',0),setv('shake x',0),setv('shake y',0),clear('board'),repeat(200,[append('board',0)]),clear('bag'),clear('clear rows'),setv('fx active',0),setv('fx age',0),setv('flash',0),
+proc('draw combo',[If(gt(V('COMBO'),0),[
+ setv('combo frame',11),setv('combo scale',1),If(lt(V('combo pulse'),24),[setv('combo frame',floor(div(V('combo pulse'),2)))]),
+ If(lt(V('combo pulse'),8),[setv('combo scale',sub(1.18,mul(V('combo pulse'),.0225)))]),
+ resize({'SIZE':inp(mul(100*ZOOM,V('combo scale')))})]+stamp(0,0,join('combo',V('combo frame')))+[
+ resize({'SIZE':inp(135*ZOOM)}),setv('number spacing',20),setv('number value',V('COMBO')),setv('number digits',2),setv('number x',-20),setv('number y',-8),call('draw number'),setv('number spacing',14),
+ resize({'SIZE':inp(mul(mul(div(sub(V('combo expires'),timer()),4),100),ZOOM))})]+stamp(-55,-33,'combo timer')+[
+ resize({'SIZE':inp(100*ZOOM)}),If(eq(V('combo animating'),1),[change('combo pulse',1),If(gt(V('combo pulse'),23),[setv('combo animating',0)])])])])
+render += [call('draw clear fx'),If(gt(V('flash'),0),[change('flash',-1)]+stamp(0,-62,V('notification'))),call('draw combo')]
+# Four next pieces leave room for the real-time key display.
+for label,k,x,y in [('A / ←','a',131,-30),('D / →','d',191,-30),('W / ↑','w',131,-54),('S / ↓','s',191,-54),('Z','z',131,-78),('C','c',191,-78),('SPACE','space',131,-102),('M','m',191,-102)]:
+ render += stamp(x,y,join('key'+k+'-',held(k)))
+render += [If(eq(V('GAME OVER'),1),stamp(0,0,'gameover')),resize({'SIZE':inp(100)})]+raw_stamp(-186,158,'menu button')+[resize({'SIZE':inp(100*ZOOM)})]
+proc('render game',render)
+proc('render menu',[B('pen_clear'),resize({'SIZE':inp(100)}),If(both(eq(V('has game'),1),eq(V('GAME OVER'),0)),raw_stamp(0,0,join(join('menu',V('THEME')),'-resume')),raw_stamp(0,0,join(join('menu',V('THEME')),'-play')))])
+proc('render',[If(eq(V('SCREEN'),'play'),[call('render game')],[call('render menu')])])
+proc('reset',[If(either(lt(V('THEME'),1),gt(V('THEME'),5)),[setv('THEME',1)]),call('apply theme'),setv('COMBO',0),setv('combo expires',0),setv('combo bonus',0),setv('combo pulse',0),setv('combo animating',0),setv('shake ticks',0),setv('shake x',0),setv('shake y',0),clear('board'),repeat(200,[append('board',0)]),clear('bag'),clear('clear rows'),setv('fx active',0),setv('fx age',0),setv('flash',0),
  setv('SCORE',0),setv('LINES',0),setv('LEVEL',1),setv('HOLD',0),setv('GAME OVER',0),setv('can hold',1),setv('left ticks',0),setv('right ticks',0),
  setv('z previous',0),setv('w previous',0),setv('space previous',0),setv('c previous',0),call('spawn')])
-def edge(k,prev,ss):return [If(both(key(k),eq(V(prev),0)),ss),setv(prev,key(k))]
-def sideways(k,t,dx):return If(key(k),[change(t,1),If(either(eq(V(t),1),both(gt(V(t),9),eq(mod(V(t),2),0))),[setv('dx',dx),setv('dy',0),call('move')])],[setv(t,0)])
+def edge(k,prev,ss):return [If(both(held(k),eq(V(prev),0)),ss),setv(prev,held(k))]
+def sideways(k,t,dx):return If(held(k),[change(t,1),If(either(eq(V(t),1),both(gt(V(t),9),eq(mod(V(t),2),0))),[setv('dx',dx),setv('dy',0),call('move')])],[setv(t,0)])
 proc('hard drop',[setv('valid',1),until(eq(V('valid'),0),[setv('dx',0),setv('dy',1),call('move'),If(eq(V('valid'),1),[change('SCORE',2)])]),call('lock')])
 active=[sideways('a','left ticks',-1),sideways('d','right ticks',1)]
 active+=edge('w','w previous',[setv('turn',1),call('rotate')])+edge('z','z previous',[setv('turn',3),call('rotate')])+edge('c','c previous',[call('hold')])+edge('space','space previous',[call('hard drop')])
-active += [change('fall',1),If(either(both(key('s'),eq(mod(V('fall'),2),0)),gt(V('fall'),div(35,V('LEVEL')))),[
- setv('dx',0),setv('dy',1),call('move'),If(eq(V('valid'),1),[If(key('s'),[change('SCORE',1)]),setv('fall',0)])]),
+active += [change('fall',1),If(either(both(held('s'),eq(mod(V('fall'),2),0)),gt(V('fall'),div(35,V('LEVEL')))),[
+ setv('dx',0),setv('dy',1),call('move'),If(eq(V('valid'),1),[If(held('s'),[change('SCORE',1)]),setv('fall',0)])]),
  setv('tx',V('x')),setv('ty',add(V('y'),1)),setv('tr',V('rotation')),call('test position'),If(eq(V('valid'),0),[change('ground ticks',1),
  If(gt(V('ground ticks'),25),[call('lock')])],[setv('ground ticks',0)])]
-theme_controls=edge('t','t previous',[call('next theme')])
+proc('sync inputs',[setv('w previous',held('w')),setv('z previous',key('z')),setv('space previous',key('space')),setv('c previous',key('c')),setv('left ticks',0),setv('right ticks',0)])
+proc('open menu',[If(eq(V('SCREEN'),'play'),[call('update combo'),setv('pause started',timer()),setv('SCREEN','menu'),setv('shake ticks',0),setv('shake x',0),setv('shake y',0),call('sync inputs')])])
+proc('resume game',[If(both(eq(V('SCREEN'),'menu'),both(eq(V('has game'),1),eq(V('GAME OVER'),0))),[
+ If(gt(V('COMBO'),0),[change('combo expires',sub(timer(),V('pause started')))]),setv('SCREEN','play'),call('sync inputs')])])
+proc('start game',[call('reset'),setv('has game',1),setv('SCREEN','play'),call('sync inputs')])
+def mouse_x():return (B('sensing_mousex'),)
+def mouse_y():return (B('sensing_mousey'),)
+def hit(x1,y1,x2,y2):
+ # Input bounds are canvas coordinates with origin at the upper-left.
+ return both(both(gt(mouse_x(),x1-240),lt(mouse_x(),x2-240)),both(gt(mouse_y(),180-y2),lt(mouse_y(),180-y1)))
+menu_keys=edge('t','t previous',[call('next theme')])
 for theme in range(1,6):
- theme_controls+=edge(str(theme),'theme key '+str(theme),[setv('THEME',theme),call('apply theme')])
-mouse=(B('sensing_mousedown'),)
-clicks=[]
+ menu_keys+=edge(str(theme),'theme key '+str(theme),[setv('THEME',theme),call('apply theme')])
+menu_keys+=edge('space','space previous',[If(both(eq(V('has game'),1),eq(V('GAME OVER'),0)),[call('resume game')],[call('start game')])])+edge('n','n previous',[call('start game')])
+menu_clicks=[]
 for theme in range(1,6):
- # Fixed footer hitboxes use raw Scratch mouse coordinates; camera shake does not affect them.
- left=-232+(theme-1)*94
- clicks += [If(both(both(gt((B('sensing_mousex'),),left),lt((B('sensing_mousex'),),left+88)),both(gt((B('sensing_mousey'),),-179),lt((B('sensing_mousey'),),-153))),[setv('THEME',theme),call('apply theme')])]
-theme_controls += [If(both(mouse,eq(V('mouse previous'),0)),clicks),setv('mouse previous',(B('sensing_mousedown'),))]
-loop=theme_controls+[If(key('r'),[call('reset')]),If(eq(V('GAME OVER'),0),active),call('render'),B('control_wait',{'DURATION':inp(.02)})]
+ left=8+(theme-1)*94
+ menu_clicks += [If(hit(left,252,left+88,278),[setv('THEME',theme),call('apply theme')])]
+menu_clicks += [If(hit(142,132,338,166),[If(both(eq(V('has game'),1),eq(V('GAME OVER'),0)),[call('resume game')],[call('start game')])]),If(hit(142,174,338,200),[call('start game')])]
+clicks=[If(eq(V('SCREEN'),'menu'),menu_clicks,[If(hit(8,10,100,34),[call('open menu')])])]
+loop=edge('m','m previous',[If(eq(V('SCREEN'),'play'),[call('open menu')],[call('resume game')])])
+loop += [If(both((B('sensing_mousedown'),),eq(V('mouse previous'),0)),clicks),setv('mouse previous',(B('sensing_mousedown'),)),
+ If(eq(V('SCREEN'),'menu'),menu_keys,[If(key('r'),[call('reset'),call('sync inputs')])]+active),call('render'),B('control_wait',{'DURATION':inp(.02)})]
 forever=B('control_forever');h=seq(loop);blocks[forever]['inputs']['SUBSTACK']=[2,h];blocks[h]['parent']=forever
-hat=B('event_whenflagclicked');h=seq([B('looks_hide'),B('looks_setsizeto',{'SIZE':inp(100*ZOOM)}),call('reset'),forever]);blocks[hat]['next']=h;blocks[h]['parent']=hat;blocks[hat].update(topLevel=True,x=20,y=20)
+hat=B('event_whenflagclicked');h=seq([B('looks_hide'),call('reset'),setv('has game',0),setv('SCREEN','menu'),setv('m previous',0),setv('mouse previous',0),setv('n previous',0),call('sync inputs'),forever]);blocks[hat]['next']=h;blocks[h]['parent']=hat;blocks[hat].update(topLevel=True,x=20,y=20)
 # establish parent pointers for reporter input blocks
 for k,b in list(blocks.items()):
  for v in b['inputs'].values():
@@ -186,7 +215,7 @@ assets={}
 def costume(name,svg,cx,cy):
  data=svg.encode();md=hashlib.md5(data).hexdigest();assets[md+'.svg']=data
  return dict(name=name,assetId=md,dataFormat='svg',md5ext=md+'.svg',rotationCenterX=cx,rotationCenterY=cy)
-from visuals import COLORS, THEME_NAMES, THEME_PALETTES, landscape, block, arena, digit, gameover, badge, clear_beam, particle, svg, text, rect
+from visuals import COLORS, THEME_NAMES, THEME_PALETTES, landscape, block, arena, digit, gameover, badge, clear_beam, particle, svg, text, rect, menu, menu_button, keycap, combo_banner
 costumes=[]
 for theme,palette in enumerate(THEME_PALETTES,1):
  costumes += [costume('t'+str(theme)+'-'+str(i+1),block(c,theme=theme),8,8) for i,c in enumerate(palette)]
@@ -200,12 +229,14 @@ costumes += [costume('spark',particle('#cceeff'),3,3)]
 costumes += [costume('tspin',svg(rect(0,0,136,34,'#141021',r=0,extra='fill-opacity=".94"')+text(68,23,'T-SPIN',20,'#d4a5ff',800,extra='text-anchor="middle" letter-spacing="2"'),136,34),68,17)]
 costumes += [costume('interface',arena(),240,180)]
 costumes += [costume('combo timer',svg(rect(0,0,110,2,'#b8eeff'),110,2),0,1)]
-for chosen in range(1,6):
- buttons=[]
- for i,name in enumerate(THEME_NAMES,1):
-  x=8+(i-1)*94
-  buttons += [rect(x,1,88,22,'#151322' if i==chosen else '#0d101c','#d3c3ff' if i==chosen else '#4a4b63',3,extra='fill-opacity=".94" stroke-width=".7"'),text(x+44,15,str(i)+'  '+name.upper(),7,'#ffffff' if i==chosen else '#b1b5cd',700,extra='text-anchor="middle"')]
- costumes += [costume('selector'+str(chosen),svg(''.join(buttons),480,26),240,13)]
+costumes += [costume('menu button',menu_button(),46,12)]
+for theme in range(1,6):
+ for resume in [False,True]:
+  costumes += [costume('menu'+str(theme)+('-resume' if resume else '-play'),menu(theme,resume),240,180)]
+for label,k in [('A / ←','a'),('D / →','d'),('W / ↑','w'),('S / ↓','s'),('Z','z'),('C','c'),('SPACE','space'),('M','m')]:
+ for pressed in [False,True]:
+  costumes += [costume('key'+k+'-'+str(pressed).lower(),keycap(label,pressed),27,10)]
+costumes += [costume('combo'+str(frame),combo_banner(frame),80,30) for frame in range(12)]
 backdrops=[costume('theme'+str(i),landscape(i),240,180) for i in range(1,6)]
 # Matrix order: I J L O S T Z. Rotation around SRS centers.
 bases=[[(0,1),(1,1),(2,1),(3,1)],[(0,0),(0,1),(1,1),(2,1)],[(2,0),(0,1),(1,1),(2,1)],[(1,0),(2,0),(1,1),(2,1)],[(1,0),(2,0),(0,1),(1,1)],[(1,0),(0,1),(1,1),(2,1)],[(0,0),(1,0),(1,1),(2,1)]]
