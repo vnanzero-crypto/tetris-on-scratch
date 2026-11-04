@@ -81,25 +81,26 @@ def mathop(op,n):return (B('operator_mathop',{'NUM':inp(n)},{'OPERATOR':[op,None
 def effect(name,value):return B('looks_seteffectto',{'VALUE':inp(value)},{'EFFECT':[name,None]})
 def out_of_bounds(x,y):return either(either(lt(V(x),0),gt(V(x),9)),either(lt(V(y),0),gt(V(y),19)))
 
-PROFILE_FIELDS=['PLAYER NAME','SHAKE','DIFFICULTY','CLEAR EFFECT','BLOCK SKIN','AURA','game r','game g','game b','key r','key g','key b','game custom','key custom']
-DEFAULTS={'PLAYER NAME':'PLAYER','SHAKE':50,'DIFFICULTY':2,'CLEAR EFFECT':1,'BLOCK SKIN':1,'AURA':0,'game r':150,'game g':112,'game b':255,'key r':125,'key g':190,'key b':255,'game custom':0,'key custom':0}
+PROFILE_FIELDS=['PLAYER NAME','SHAKE','DIFFICULTY','CLEAR EFFECT','BLOCK SKIN','AURA','game r','game g','game b','key r','key g','key b','game custom','key custom','DROP EFFECT']
+DEFAULTS={'PLAYER NAME':'PLAYER','SHAKE':50,'DIFFICULTY':2,'CLEAR EFFECT':1,'BLOCK SKIN':1,'AURA':0,'game r':150,'game g':112,'game b':255,'key r':125,'key g':190,'key b':255,'game custom':0,'key custom':0,'DROP EFFECT':1}
 def packed(prefix):return add(add(mul(V(prefix+' draw r'),65536),mul(V(prefix+' draw g'),256)),V(prefix+' draw b'))
-def segment(x1,y1,x2,y2,color,width,world=False):
+def segment(x1,y1,x2,y2,color,width,world=False,transparency=None):
  move=position if world else lambda x,y:B('motion_gotoxy',{'X':inp(x),'Y':inp(y)})
- return [B('pen_penUp'),B('pen_setPenColorToColor',{'COLOR':inp(color)}),B('pen_setPenSizeTo',{'SIZE':inp(width)}),move(x1,y1),B('pen_penDown'),move(x2,y2),B('pen_penUp')]
+ alpha=[] if transparency is None else [B('pen_setPenColorParamTo',{'COLOR_PARAM':inp('transparency'),'VALUE':inp(transparency)})]
+ return [B('pen_penUp'),B('pen_setPenColorToColor',{'COLOR':inp(color)}),B('pen_setPenSizeTo',{'SIZE':inp(width)})]+alpha+[move(x1,y1),B('pen_penDown'),move(x2,y2),B('pen_penUp')]
 cosmetic_guards=[]
 for variable,mapping,fallback in [('BLOCK SKIN',SKIN_REQUIREMENTS,1),('AURA',AURA_REQUIREMENTS,0),('CLEAR EFFECT',EFFECT_REQUIREMENTS,1)]:
  for option,aid in mapping.items():cosmetic_guards += [If(both(eq(V(variable),option),neg(eq(item('unlocked',aid),1))),[setv(variable,fallback)])]
 proc('validate cosmetics',cosmetic_guards)
 clamps=[]
-for name,lo,hi in [('SHAKE',0,100),('DIFFICULTY',1,5),('CLEAR EFFECT',1,10),('BLOCK SKIN',1,9),('AURA',0,7)]+[(p+' '+c,0,255) for p in ['game','key'] for c in ['r','g','b']]+[('game custom',0,2),('key custom',0,2)]:
+for name,lo,hi in [('SHAKE',0,100),('DIFFICULTY',1,5),('CLEAR EFFECT',1,10),('BLOCK SKIN',1,9),('AURA',0,7),('DROP EFFECT',1,6)]+[(p+' '+c,0,255) for p in ['game','key'] for c in ['r','g','b']]+[('game custom',0,2),('key custom',0,2)]:
  clamps += [setv(name,floor(V(name))),If(lt(V(name),lo),[setv(name,lo)]),If(gt(V(name),hi),[setv(name,hi)])]
 proc('clamp settings',clamps+[call('validate cosmetics')])
-proc('save profile',[call('clamp settings'),call('checkpoint run'),clear('saved profile'),append('saved profile',1)]+[append('saved profile',V(n)) for n in PROFILE_FIELDS]+[setv('profile saved',1),setv('settings notice','saved'),setv('notice until',add(timer(),2))])
+proc('save profile',[call('clamp settings'),call('checkpoint run'),clear('saved profile'),append('saved profile',2)]+[append('saved profile',V(n)) for n in PROFILE_FIELDS]+[setv('profile saved',1),setv('settings notice','saved'),setv('notice until',add(timer(),2))])
 proc('init profile',[If(neg(eq(V('profile ready'),1)),[setv(n,v) for n,v in DEFAULTS.items()]+[clear('unlocked'),repeat(50,[append('unlocked',0)]),setv('lifetime lines',0),setv('lifetime spins',0),setv('lifetime quads',0),setv('profile ready',1),call('save profile'),setv('settings notice','')]),
  until(neg(lt(length('unlocked'),50)),[append('unlocked',0)]),until(neg(lt(length('run difficulties'),length('run ids'))),[append('run difficulties',2)]),until(neg(gt(length('run difficulties'),length('run ids'))),[delete('run difficulties',length('run difficulties'))])])
-proc('load profile',[call('init profile'),If(both(eq(length('saved profile'),15),eq(item('saved profile',1),1)),[setv(n,item('saved profile',i+2)) for i,n in enumerate(PROFILE_FIELDS)]+[call('clamp settings')]),setv('settings notice','')])
-# Saved profile is version plus fourteen fields, deliberately separate from live progress.
+proc('load profile',[call('init profile'),If(both(eq(length('saved profile'),15),eq(item('saved profile',1),1)),[setv(n,item('saved profile',i+2)) for i,n in enumerate(PROFILE_FIELDS[:-1])]+[setv('DROP EFFECT',1),call('clamp settings')]),If(both(eq(length('saved profile'),16),eq(item('saved profile',1),2)),[setv(n,item('saved profile',i+2)) for i,n in enumerate(PROFILE_FIELDS)]+[call('clamp settings')]),setv('settings notice','')])
+# Version two adds drop style; version-one snapshots retain all prior fields.
 proc('sanitize name',[setv('PLAYER NAME',''),setv('name index',1),repeat(12,[setv('name char',R('operator_letter_of',LETTER=V('name index'),STRING=V('name draft'))),
  If(both(neg(eq(V('name char'),'')),gt((B('data_itemnumoflist',{'ITEM':inp(V('name char'))},{'LIST':['name alphabet',lst('name alphabet')]}),),0)),[setv('PLAYER NAME',join(V('PLAYER NAME'),V('name char')))]),change('name index',1)]),
  If(eq(V('PLAYER NAME'),''),[setv('PLAYER NAME','PLAYER')]),setv('profile saved',0)])
@@ -123,8 +124,8 @@ proc('update rainbow',rainbow_updates)
 proc('draw raw text',[resize({'SIZE':inp(V('text scale'))}),setv('text index',1),repeat(R('operator_length',STRING=V('text value')),[setv('text char',R('operator_letter_of',LETTER=V('text index'),STRING=V('text value'))),
  setv('text glyph',(B('data_itemnumoflist',{'ITEM':inp(V('text char'))},{'LIST':['name alphabet',lst('name alphabet')]}),)),If(gt(V('text glyph'),0),raw_stamp(V('text x'),V('text y'),join('letter',V('text glyph')))),change('text x',mul(V('text scale'),.12)),change('text index',1)])])
 # Four-second rolling combo window uses Scratch's real clock, not frame counts.
-proc('update combo',[If(both(gt(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',0),setv('combo expires',0),setv('combo animating',0)])])
-proc('clear combo',[If(either(eq(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',1)],[change('COMBO',1)]),
+proc('update combo',[If(both(gt(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',0),setv('combo expires',0),setv('combo animating',0),call('clear combo buffs')])])
+proc('clear combo',[If(either(eq(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',1),call('clear combo buffs')],[change('COMBO',1)]),
  setv('combo pulse',0),setv('combo animating',1),If(gt(V('COMBO'),V('run max combo')),[setv('run max combo',V('COMBO'))]),If(gt(V('COMBO'),V('best combo')),[setv('best combo',V('COMBO'))]),setv('combo expires',add(timer(),4)),setv('combo bonus',mul(mul(sub(V('COMBO'),1),50),V('LEVEL')))])
 proc('update camera',[setv('shake x',0),setv('shake y',0),If(gt(V('shake ticks'),0),[
  setv('shake amount',mul(mul(div(V('shake ticks'),10),div(V('SHAKE'),100)),8)),
@@ -175,7 +176,7 @@ proc('start clear fx',[setv('fx style',V('CLEAR EFFECT')),If(eq(V('THEME'),12),[
  append('clear rows',item('pending clear rows',V('fx row'))),change('fx row',1)]),
  setv('shake ticks',10),setv('fx active',1),setv('fx age',0),clear('particle x'),clear('particle y'),clear('particle vx'),clear('particle vy'),
  setv('fx row',1),repeat(length('clear rows'),[setv('fx y',sub(152,mul(item('clear rows',V('fx row')),16))),repeat(12,[
- append('particle x',random(-74,74)),append('particle y',V('fx y')),append('particle vx',div(random(-30,30),10)),append('particle vy',div(random(15,55),10))]),change('fx row',1)])])
+ append('particle x',random(-74,74)),append('particle y',V('fx y')),append('particle vx',div(random(-30,30),10)),append('particle vy',div(random(15,55),10))]),change('fx row',1)]),call('start isaac tears')])
 proc('lock',[call('detect spin'),setv('shape',shape(V('piece'),V('rotation'))),setv('tx',V('x')),setv('ty',V('y')),setv('i',0),
  repeat(16,[If(eq(cell(),1),coords()+[replace('board',idx(V('cx'),V('cy')),V('piece'))]),change('i',1)]),
  setv('row',19),setv('cleared',0),clear('pending clear rows'),repeat(20,[setv('full',1),setv('col',0),repeat(10,[
@@ -200,6 +201,7 @@ proc('draw number',[setv('number text',join('000000',V('number value'))),setv('d
 proc('draw raw number',[resize({'SIZE':inp(V('number scale'))}),setv('number text',join('00000000',V('number value'))),setv('digit index',sub(R('operator_length',STRING=V('number text')),V('number digits'))),repeat(V('number digits'),[
  change('digit index',1),B('motion_gotoxy',{'X':inp(V('number x')),'Y':inp(V('number y'))}),B('looks_switchcostumeto',{'COSTUME':inp(join('digit',R('operator_letter_of',LETTER=V('digit index'),STRING=V('number text'))))}),B('pen_stamp'),change('number x',V('number spacing'))])])
 proc('draw clear fx',[If(eq(V('fx active'),1),[
+ call('draw isaac tears'),
  If(lt(V('fx age'),20),[If(either(eq(length('clear rows'),4),eq(V('notification'),'tspin')),[setv('fx beam','quadbeam')],[setv('fx beam','beam')]),setv('fx row',1),repeat(length('clear rows'),
  stamp(0,sub(152,mul(item('clear rows',V('fx row')),16)),join(join('element',V('fx style')),join('-',floor(div(V('fx age'),2)))))+[change('fx row',1)])]),
  effect('GHOST',mul(V('fx age'),4)),setv('particle',1),repeat(length('particle x'),[
@@ -208,7 +210,7 @@ proc('draw clear fx',[If(eq(V('fx active'),1),[
  replace('particle vy',V('particle'),sub(item('particle vy',V('particle')),.28)),
  If(both(both(gt(item('particle x',V('particle')),-78),lt(item('particle x',V('particle')),78)),both(gt(item('particle y',V('particle')),-158),lt(item('particle y',V('particle')),158))),
  stamp(item('particle x',V('particle')),item('particle y',V('particle')),join('element spark',V('fx style')))),change('particle',1)]),B('looks_cleargraphiceffects'),change('fx age',1),
- If(gt(V('fx age'),23),[setv('fx active',0)])])])
+ If(gt(V('fx age'),23),[setv('fx active',0),call('clear isaac tears')])])])
 
 render=[setv('block prefix',join('t',V('THEME'))),If(gt(V('BLOCK SKIN'),1),[setv('block prefix',join('skin',V('BLOCK SKIN')))]),setv('number spacing',14),call('update combo'),call('update camera'),B('pen_clear'),call('draw ambient'),resize({'SIZE':inp(ZOOM*100)})]+stamp(0,0,'interface')+[call('draw game accent'),If(gt(V('AURA'),0),stamp(0,0,join(join('aura',V('AURA')),join('-',mod(floor(mul(timer(),8)),8))))),call('draw drop dash')]+[setv('i',1),repeat(200,[If(gt(item('board',V('i')),0),block_stamp(add(-72,mul(mod(sub(V('i'),1),10),16)),sub(152,mul(floor(div(sub(V('i'),1),10)),16)),item('board',V('i')))),change('i',1)]),
  setv('ghost',V('y')),setv('valid',1),until(eq(V('valid'),0),[setv('tx',V('x')),setv('ty',add(V('ghost'),1)),setv('tr',V('rotation')),call('test position'),If(eq(V('valid'),1),[change('ghost',1)])]),
@@ -222,7 +224,7 @@ proc('draw combo',[
  resize({'SIZE':inp(mul(100*ZOOM,V('combo scale')))}),setv('number spacing',14),setv('number value',V('COMBO')),setv('number digits',2),setv('number x',-136),setv('number y',120),call('draw number'),resize({'SIZE':inp(100*ZOOM)}),
  If(gt(V('COMBO'),0),[setv('combo title',V('COMBO')),If(gt(V('combo title'),15),[setv('combo title',15)])]+stamp(-161,100,join('title',V('combo title')))+[
  resize({'SIZE':inp(100*ZOOM)}),If(eq(V('combo animating'),1),[change('combo pulse',1),If(gt(V('combo pulse'),23),[setv('combo animating',0)])])])])
-render += [call('draw clear fx'),If(gt(V('flash'),0),[change('flash',-1)]+stamp(-161,78,V('notification'))),call('draw combo'),call('draw combo timer'),call('draw companions'),call('draw bee tokens'),call('draw bee buffs')]
+render += [call('draw clear fx'),If(gt(V('flash'),0),[change('flash',-1)]+stamp(-161,78,V('notification'))),call('draw combo'),call('draw combo timer'),call('draw companions'),call('draw bee tokens'),call('draw combo wisps'),call('draw bee buffs')]
 # Optional exact RGB pen fill below the white arrow glyph, independent of theme colors.
 for arrow,k,x,y in [('↑','w',160,-40),('←','a',118,-70),('↓','s',160,-70),('→','d',202,-70)]:
  render += [If(both(gt(V('key custom'),0),held(k)),segment(x-7,y,x+7,y,packed('key'),22*ZOOM,True)+stamp(x,y,'arrow glyph'+k),stamp(x,y,join('arrow'+k+'-',held(k))))]
@@ -243,12 +245,15 @@ history_render=[B('pen_clear'),call('draw ambient'),resize({'SIZE':inp(100)})]+r
  setv('number value',V('history pages')),setv('number digits',1),setv('number scale',55),setv('number spacing',8),setv('number x',8),setv('number y',-123),call('draw raw number')]
 proc('render history',history_render)
 proc('render',[call('update hover'),If(eq(V('SCREEN'),'play'),[call('render game')],[If(eq(V('SCREEN'),'themes'),[call('render themes')],[If(eq(V('SCREEN'),'history'),[call('render history')],[call('render menu')])])]),call('draw hover')])
-proc('reset',[call('init profile'),call('apply difficulty'),If(either(lt(V('THEME'),1),gt(V('THEME'),12)),[setv('THEME',1)]),call('apply theme'),call('init companions'),call('reset bee buffs'),setv('dash active',0),setv('dash age',0),setv('COMBO',0),setv('combo expires',0),setv('combo bonus',0),setv('run max combo',0),setv('combo pulse',0),setv('combo animating',0),setv('shake ticks',0),setv('shake x',0),setv('shake y',0),clear('board'),repeat(200,[append('board',0)]),clear('bag'),clear('clear rows'),setv('fx active',0),setv('fx age',0),setv('flash',0),
+proc('reset',[call('init profile'),call('apply difficulty'),If(either(lt(V('THEME'),1),gt(V('THEME'),12)),[setv('THEME',1)]),call('apply theme'),call('init companions'),call('reset bee buffs'),call('clear isaac tears'),setv('dash active',0),setv('dash age',0),setv('COMBO',0),setv('combo expires',0),setv('combo bonus',0),setv('run max combo',0),setv('combo pulse',0),setv('combo animating',0),setv('shake ticks',0),setv('shake x',0),setv('shake y',0),clear('board'),repeat(200,[append('board',0)]),clear('bag'),clear('clear rows'),setv('fx active',0),setv('fx age',0),setv('flash',0),
  setv('SCORE',0),setv('LINES',0),setv('LEVEL',1),setv('HOLD',0),setv('GAME OVER',0),setv('can hold',1),setv('left ticks',0),setv('right ticks',0),
  setv('z previous',0),setv('w previous',0),setv('space previous',0),setv('c previous',0),call('spawn')])
 def edge(k,prev,ss):return [If(both(held(k),eq(V(prev),0)),ss),setv(prev,held(k))]
 def sideways(k,t,dx):return If(held(k),[change(t,1),If(either(eq(V(t),1),both(gt(V(t),9),eq(mod(V(t),2),0))),[setv('dx',dx),setv('dy',0),call('move')])],[setv(t,0)])
-proc('hard drop',[setv('dash active',1),setv('dash age',0),change('lifetime drops',1),setv('valid',1),until(eq(V('valid'),0),[setv('dx',0),setv('dy',1),call('move'),If(eq(V('valid'),1),[change('SCORE',2)])]),call('lock')])
+proc('capture drop start',[setv('drop style',V('DROP EFFECT')),setv('drop start row',V('y')),setv('drop local x',0),setv('drop local y',0),setv('shape',shape(V('piece'),V('rotation'))),setv('i',0),repeat(16,[
+ If(eq(cell(),1),[change('drop local x',mod(V('i'),4)),change('drop local y',floor(div(V('i'),4)))]),change('i',1)]),
+ setv('drop x',add(-72,mul(add(V('x'),div(V('drop local x'),4)),16))),setv('drop from y',sub(152,mul(add(V('y'),div(V('drop local y'),4)),16))),setv('drop to y',V('drop from y'))])
+proc('hard drop',[call('capture drop start'),setv('dash active',1),setv('dash age',0),change('lifetime drops',1),setv('valid',1),until(eq(V('valid'),0),[setv('dx',0),setv('dy',1),call('move'),If(eq(V('valid'),1),[change('SCORE',2)])]),setv('drop to y',sub(V('drop from y'),mul(sub(V('y'),V('drop start row')),16))),call('lock')])
 active=[sideways('a','left ticks',-1),sideways('d','right ticks',1)]
 active+=edge('w','w previous',[setv('turn',1),call('rotate')])+edge('z','z previous',[setv('turn',3),call('rotate')])+edge('c','c previous',[call('hold')])+edge('space','space previous',[call('hard drop')])
 active += [change('fall',1),If(either(both(held('s'),eq(mod(V('fall'),2),0)),gt(V('fall'),div(V('gravity base'),V('LEVEL')))),[
@@ -297,7 +302,7 @@ proc('draw hover',[If(gt(V('hover object'),0),[
 clicks=[If(eq(V('SCREEN'),'menu'),menu_clicks,[If(eq(V('SCREEN'),'themes'),theme_clicks,[If(eq(V('SCREEN'),'history'),history_clicks,[If(hit(8,10,100,34),[call('open menu')])])])])]
 loop=edge('u','u previous',[call('unlock all')])+edge('m','m previous',[If(eq(V('SCREEN'),'play'),[call('open menu')],[If(eq(V('SCREEN'),'menu'),[call('resume game')],[setv('SCREEN','menu')])])])
 loop += [If(both((B('sensing_mousedown'),),eq(V('mouse previous'),0)),clicks),setv('mouse previous',(B('sensing_mousedown'),)),
- If(eq(V('SCREEN'),'menu'),menu_keys,[If(eq(V('SCREEN'),'themes'),theme_keys,[If(eq(V('SCREEN'),'play'),[If(key('r'),[call('choose difficulty')])]+active)])]),call('checkpoint run'),call('check achievements'),call('render'),B('control_wait',{'DURATION':inp(.02)})]
+ If(eq(V('SCREEN'),'menu'),menu_keys,[If(eq(V('SCREEN'),'themes'),theme_keys,[If(both(eq(V('SCREEN'),'play'),eq(V('GAME OVER'),0)),[If(key('r'),[call('choose difficulty')])]+active)])]),call('checkpoint run'),call('check achievements'),call('render'),B('control_wait',{'DURATION':inp(.02)})]
 forever=B('control_forever');h=seq(loop);blocks[forever]['inputs']['SUBSTACK']=[2,h];blocks[h]['parent']=forever
 hat=B('event_whenflagclicked');h=seq([B('looks_hide'),call('init profile'),setv('finish reason','Stopped'),call('finish run'),call('load profile'),call('reset'),setv('has game',0),setv('SCREEN','menu'),call('init ambient'),setv('m previous',0),setv('mouse previous',0),setv('n previous',0),call('sync inputs'),forever]);blocks[hat]['next']=h;blocks[h]['parent']=hat;blocks[hat].update(topLevel=True,x=20,y=20)
 # RGB accents and settings overlay are native pen blocks, not external extensions.
@@ -378,8 +383,8 @@ proc('difficulty click',diff_clicks)
 proc('show cosmetics',[setv('SCREEN','cosmetics'),setv('cosmetics tab',1),setv('hover object',0),setv('settings notice','')])
 cosm_render=[B('pen_clear'),call('draw ambient'),resize({'SIZE':inp(100)})]+raw_stamp(0,0,join('cosmetics panel',V('cosmetics tab')))
 cosm_clicks=[If(hit(16,16,100,42),[setv('SCREEN','menu')]),If(hit(18,316,164,344),[call('show settings'),setv('settings tab',2),setv('settings return','cosmetics')]),If(hit(310,316,462,344),[call('save profile')])]
-for tab in range(1,4):cosm_clicks += [If(hit(128+(tab-1)*116,16,238+(tab-1)*116,42),[setv('cosmetics tab',tab)])]
-for tab,options,variable,requirements,offset in [(1,10,'CLEAR EFFECT',EFFECT_REQUIREMENTS,0),(2,9,'BLOCK SKIN',SKIN_REQUIREMENTS,0),(3,8,'AURA',AURA_REQUIREMENTS,-1)]:
+for tab in range(1,5):cosm_clicks += [If(hit(112+(tab-1)*90,16,198+(tab-1)*90,42),[setv('cosmetics tab',tab)])]
+for tab,options,variable,requirements,offset in [(1,10,'CLEAR EFFECT',EFFECT_REQUIREMENTS,0),(2,9,'BLOCK SKIN',SKIN_REQUIREMENTS,0),(3,8,'AURA',AURA_REQUIREMENTS,-1),(4,6,'DROP EFFECT',{},0)]:
  draw=[];click=[]
  for index in range(1,options+1):
   x=12+((index-1)%5)*94;y=100+((index-1)//5)*100;choice=index+offset;aid=requirements.get(choice)
@@ -427,21 +432,54 @@ for token,bx,by in [(1,-208,-140),(3,208,-140),(4,208,140)]:
  bee_tokens+=raw_stamp(bx,by,join('bee token'+str(token)+'-',mod(floor(mul(timer(),12)),4)))
 bee_tokens += [B('looks_cleargraphiceffects'),resize({'SIZE':inp(100*ZOOM)})]
 proc('draw bee tokens',[If(both(eq(V('THEME'),11),eq(V('fx active'),1)),bee_tokens)])
-# Bee Swarm buffs are temporary badges only; no score, speed or board reads.
-proc('reset bee buffs',[clear('buff stacks'),clear('buff life'),repeat(4,[append('buff stacks',0),append('buff life',0)])])
-def ensure_buffs():return If(neg(both(eq(length('buff stacks'),4),eq(length('buff life'),4))),[call('reset bee buffs')])
-proc('grant bee buff',[If(eq(V('THEME'),11),[ensure_buffs(),setv('buff choice',random(1,4)),
- replace('buff stacks',V('buff choice'),add(item('buff stacks',V('buff choice')),1)),If(gt(item('buff stacks',V('buff choice')),99),[replace('buff stacks',V('buff choice'),99)]),replace('buff life',V('buff choice'),240)])])
+# Timed first-clear buffs and combo-held buffs share badges, never game modifiers.
+proc('clear combo buffs',[clear('combo buff stacks'),repeat(12,[append('combo buff stacks',0)]),setv('combo buffs active',0)])
+proc('reset bee buffs',[clear('buff stacks'),clear('buff life'),repeat(12,[append('buff stacks',0),append('buff life',0)]),call('clear combo buffs')])
+def ensure_buffs():return If(neg(both(eq(length('buff stacks'),12),both(eq(length('buff life'),12),eq(length('combo buff stacks'),12)))),[call('reset bee buffs')])
+proc('grant combo buffs',[If(both(eq(V('THEME'),11),gt(V('COMBO'),1)),[ensure_buffs(),clear('buff pool'),repeat(12,[append('buff pool',add(length('buff pool'),1))]),repeat(5,[
+ setv('buff pick',random(1,length('buff pool'))),setv('buff choice',item('buff pool',V('buff pick'))),delete('buff pool',V('buff pick')),
+ replace('combo buff stacks',V('buff choice'),add(item('combo buff stacks',V('buff choice')),1)),If(gt(item('combo buff stacks',V('buff choice')),99),[replace('combo buff stacks',V('buff choice'),99)])]),setv('combo buffs active',1)])])
+proc('grant bee buff',[If(eq(V('THEME'),11),[ensure_buffs(),If(gt(V('COMBO'),1),[call('grant combo buffs')],[setv('buff choice',random(1,12)),
+ replace('buff stacks',V('buff choice'),add(item('buff stacks',V('buff choice')),1)),If(gt(item('buff stacks',V('buff choice')),99),[replace('buff stacks',V('buff choice'),99)]),replace('buff life',V('buff choice'),240)])])])
 buff_draw=[setv('buff y',sub(124,mul(V('buff slot'),24))),resize({'SIZE':inp(100)}),
- If(lt(item('buff life',V('buff index')),60),[effect('GHOST',mul(sub(60,item('buff life',V('buff index'))),1.5))])]+raw_stamp(-220,V('buff y'),'buff badge')+[
+ If(both(eq(item('combo buff stacks',V('buff index')),0),lt(item('buff life',V('buff index')),60)),[effect('GHOST',mul(sub(60,item('buff life',V('buff index'))),1.5))]),
+ If(gt(item('combo buff stacks',V('buff index')),0),raw_stamp(-220,V('buff y'),'combo buff badge'),raw_stamp(-220,V('buff y'),'buff badge')),
  resize({'SIZE':inp(70)})]+raw_stamp(-228,V('buff y'),join('buff icon',V('buff index')))+[
- setv('number value',item('buff stacks',V('buff index'))),setv('number digits',2),setv('number scale',40),setv('number spacing',4.5),setv('number x',-218),setv('number y',sub(V('buff y'),3)),call('draw raw number'),B('looks_cleargraphiceffects'),
+ setv('number value',V('buff total')),setv('number digits',2),setv('number scale',40),setv('number spacing',4.5),setv('number x',-218),setv('number y',sub(V('buff y'),3)),call('draw raw number'),B('looks_cleargraphiceffects'),
  If(both(both(gt(mouse_x(),-237),lt(mouse_x(),-203)),both(gt(mouse_y(),sub(V('buff y'),11)),lt(mouse_y(),add(V('buff y'),11)))),[resize({'SIZE':inp(100)})]+raw_stamp(-150,139,join('buff label',V('buff index')))),change('buff slot',1)]
 buff_loop=[If(gt(item('buff life',V('buff index')),0),[
- replace('buff life',V('buff index'),sub(item('buff life',V('buff index')),1)),If(eq(item('buff life',V('buff index')),0),[replace('buff stacks',V('buff index'),0)],buff_draw)]),change('buff index',1)]
-proc('draw bee buffs',[If(eq(V('THEME'),11),[ensure_buffs(),setv('buff index',1),setv('buff slot',0),repeat(4,buff_loop),resize({'SIZE':inp(100*ZOOM)})])])
-proc('draw drop dash',[If(eq(V('dash active'),1),[resize({'SIZE':inp(100*ZOOM)})]+stamp(0,0,join('drop dash',floor(div(V('dash age'),2))))+[
- change('dash age',1),If(gt(V('dash age'),19),[setv('dash active',0)])])])
+ replace('buff life',V('buff index'),sub(item('buff life',V('buff index')),1)),If(eq(item('buff life',V('buff index')),0),[replace('buff stacks',V('buff index'),0)])]),
+ setv('buff total',add(item('buff stacks',V('buff index')),item('combo buff stacks',V('buff index')))),If(gt(V('buff total'),99),[setv('buff total',99)]),If(gt(V('buff total'),0),buff_draw),change('buff index',1)]
+proc('draw bee buffs',[If(both(eq(V('COMBO'),0),eq(V('combo buffs active'),1)),[call('clear combo buffs')]),If(eq(V('THEME'),11),[ensure_buffs(),setv('buff index',1),setv('buff slot',0),repeat(12,buff_loop),resize({'SIZE':inp(100*ZOOM)})])])
+wisp_loop=[setv('wisp x',mul(sub(mul(mod(add(V('wisp kind'),V('wisp index')),2),2),1),add(108,mod(add(add(mul(V('wisp kind'),13),mul(V('wisp index'),29)),mul(mathop('sin',mul(timer(),60)),10)),105)))),
+ setv('wisp y',sub(mod(add(add(mul(timer(),40),mul(V('wisp kind'),37)),mul(V('wisp index'),101)),280),140))]+raw_stamp(V('wisp x'),V('wisp y'),join(join('buff wisp',V('wisp kind')),join('-',mod(floor(mul(timer(),8)),4))))+[change('wisp index',1)]
+proc('draw combo wisps',[If(both(eq(V('THEME'),11),gt(V('COMBO'),1)),[ensure_buffs(),resize({'SIZE':inp(65)}),setv('wisp kind',1),repeat(12,[
+ setv('wisp count',item('combo buff stacks',V('wisp kind'))),If(gt(V('wisp count'),4),[setv('wisp count',4)]),setv('wisp index',1),repeat(V('wisp count'),wisp_loop),change('wisp kind',1)]),resize({'SIZE':inp(100*ZOOM)})])])
+# A Space edge records the actual piece center and landing before lock/spawn.
+# Pen strokes use those two endpoints, with a small landing flare for each style.
+def trail_stroke(color,width,offset=0,base_alpha=0):
+ return segment(add(V('drop x'),offset),V('drop from y'),add(V('drop x'),offset),V('drop to y'),color,width*ZOOM,True,add(base_alpha,mul(V('dash age'),(95-base_alpha)/20)))
+drop_styles={
+ 1:trail_stroke(0xe1f7ff,5,base_alpha=78)+trail_stroke(0xffffff,1.8),
+ 2:trail_stroke(packed('game'),7,base_alpha=65)+trail_stroke(packed('game'),3)+trail_stroke(0xffffff,.8),
+ 3:sum([trail_stroke(c,.95,(i-2.5)*1.05) for i,c in enumerate([0xff5e91,0xffb767,0xffed95,0x85f4c2,0x81cfff,0xcc9bff])],[])+trail_stroke(0xffffff,.6),
+ 4:trail_stroke(0xff4e2a,8,base_alpha=75)+trail_stroke(0xffaa42,3.7)+trail_stroke(0xfff1bf,1.2),
+ 5:trail_stroke(0x85e4ff,6,base_alpha=70)+trail_stroke(0xe9ffff,1.4)+trail_stroke(0x9ddcff,.6,-2.8)+trail_stroke(0x9ddcff,.6,2.8),
+ 6:trail_stroke(0x301442,7,base_alpha=35)+trail_stroke(0xcca3ff,3)+trail_stroke(0xf6e2ff,.9)}
+drop_draw=[]
+for style,strokes in drop_styles.items():drop_draw += [If(eq(V('drop style'),style),strokes)]
+proc('draw drop dash',[If(eq(V('dash active'),1),drop_draw+[resize({'SIZE':inp(100*ZOOM)}),effect('GHOST',mul(V('dash age'),4))]+stamp(V('drop x'),V('drop to y'),join(join('drop tip',V('drop style')),join('-',floor(div(mul(V('dash age'),6),20)))))+[
+ B('looks_cleargraphiceffects'),change('dash age',1),If(gt(V('dash age'),19),[setv('dash active',0)])])])
+TEAR_FIELDS=['tear '+field for field in ['x','y','vx','vy','kind']]
+proc('clear isaac tears',[clear(name) for name in TEAR_FIELDS])
+proc('start isaac tears',[call('clear isaac tears'),If(eq(V('fx style'),11),[setv('tear row',1),repeat(length('clear rows'),[
+ setv('tear origin y',sub(152,mul(item('clear rows',V('tear row')),16))),setv('tear spawn',0),repeat(8,[append('tear x',random(-68,68)),append('tear y',V('tear origin y')),append('tear vx',div(random(-18,18),10)),append('tear vy',div(random(32,64),10)),append('tear kind',add(mod(V('tear spawn'),4),1)),change('tear spawn',1)]),change('tear row',1)])])])
+tear_loop=[replace('tear x',V('tear index'),add(item('tear x',V('tear index')),item('tear vx',V('tear index')))),
+ replace('tear y',V('tear index'),add(item('tear y',V('tear index')),item('tear vy',V('tear index')))),replace('tear vy',V('tear index'),sub(item('tear vy',V('tear index')),.3)),
+ If(both(lt(mathop('abs',item('tear x',V('tear index'))),73),lt(mathop('abs',item('tear y',V('tear index'))),150)),stamp(item('tear x',V('tear index')),item('tear y',V('tear index')),join(join('isaac tear',item('tear kind',V('tear index'))),join('-',mod(floor(div(V('fx age'),2)),4))))),change('tear index',1)]
+tear_splashes=[]
+for i,xx in enumerate([-48,0,48]):tear_splashes+=stamp(xx,sub(152,mul(item('clear rows',V('tear row')),16)),join('tear splash'+str(i+1)+'-',floor(div(V('fx age'),4))))
+proc('draw isaac tears',[If(both(eq(V('fx active'),1),eq(V('fx style'),11)),[resize({'SIZE':inp(100*ZOOM)}),effect('GHOST',mul(V('fx age'),3)),setv('tear row',1),repeat(length('clear rows'),tear_splashes+[change('tear row',1)]),setv('tear index',1),repeat(length('tear x'),tear_loop),B('looks_cleargraphiceffects')])])
 # Button lighting shares one layout catalogue with the generated SVGs.
 from interface import BUTTONS,button_glow
 button_lookup=[]
@@ -469,7 +507,8 @@ from settings_art import settings_panel, select_marker, slider_knob, save_notice
 from effects_art import elemental_beam, particle_skin, cosmetic_block, aura
 from expansion_art import bee,bee_token,logo,menu_cosmetics,difficulty_panel,BEE_NAMES
 from cosmetics_art import card
-from scene_art import familiar,FAMILIAR_NAMES,brimstone_beam,brimstone_spark,buff_icon,buff_label,BUFF_NAMES,hard_drop_dash
+from scene_art import familiar,FAMILIAR_NAMES,brimstone_beam,brimstone_spark,buff_icon,buff_label,buff_wisp,BUFF_NAMES
+from impact_art import DROP_NAMES,drop_tip,tear,tear_splash
 costumes=[]
 for theme,palette in enumerate(THEME_PALETTES,1):
  costumes += [costume('t'+str(theme)+'-'+str(i+1),block(c,theme=theme),8,8) for i,c in enumerate(palette)]
@@ -525,7 +564,7 @@ NAME_ALPHABET=list('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567
 for i,c in enumerate(NAME_ALPHABET,1):costumes += [costume('letter'+str(i),svg(text(0,16,c,17,'#ecf5ff',300),12,20),0,10)]
 lists['name alphabet']=['name alphabet',NAME_ALPHABET]
 lists['gravity choices']=['gravity choices',[60,35,15,8,3]];lists['lock choices']=['lock choices',[35,25,12,8,5]]
-for tab,options in [(1,10),(2,9),(3,8)]:
+for tab,options in [(1,10),(2,9),(3,8),(4,6)]:
  costumes += [costume('cosmetics panel'+str(tab),menu_cosmetics(tab),240,180)]
  for option in range(1,options+1):
   for state in range(3):costumes += [costume('card'+str(tab)+'-'+str(option)+'-'+str(state),card(tab,option,state),41,41)]
@@ -539,14 +578,22 @@ for i in [1,2,3,4]:
 for i in range(1,11):
  for frame in range(4):costumes += [costume('familiar'+str(i)+'-'+str(frame),familiar(i,frame),24,20)]
 for frame in range(10):
- costumes += [costume('element11-'+str(frame),brimstone_beam(frame),80,14),costume('drop dash'+str(frame),hard_drop_dash(frame),80,160)]
-costumes += [costume('element spark11',brimstone_spark(),6,6),costume('buff badge',svg(rect(.5,.5,33,21,'#0d1c24','#d7c56d',4,extra='stroke-width=".6"'),34,22),17,11)]
-for i in range(1,5):costumes += [costume('buff icon'+str(i),buff_icon(i),10,10),costume('buff label'+str(i),buff_label(i),30,6)]
+ costumes += [costume('element11-'+str(frame),brimstone_beam(frame),80,14)]
+costumes += [costume('element spark11',brimstone_spark(),6,6),costume('buff badge',svg(rect(.5,.5,33,21,'#0d1c24','#d7c56d',4,extra='stroke-width=".6"'),34,22),17,11),costume('combo buff badge',svg(rect(.5,.5,33,21,'#10262c','#9ef9df',4,extra='stroke-width=".9"')+rect(1,4,1,14,'#baffea',r=.5),34,22),17,11)]
+for i in range(1,13):
+ costumes += [costume('buff icon'+str(i),buff_icon(i),10,10),costume('buff label'+str(i),buff_label(i),30,6)]
+ for frame in range(4):costumes += [costume('buff wisp'+str(i)+'-'+str(frame),buff_wisp(i,frame),12,12)]
+for i in range(1,7):
+ for frame in range(6):costumes += [costume('drop tip'+str(i)+'-'+str(frame),drop_tip(i,frame),12,12)]
+for i in range(1,5):
+ for frame in range(4):costumes += [costume('isaac tear'+str(i)+'-'+str(frame),tear(i,frame),6,8)]
+ for frame in range(6):costumes += [costume('tear splash'+str(i)+'-'+str(frame),tear_splash(i,frame),16,8)]
 for i,(_,_,box,_) in enumerate(BUTTONS,1):costumes += [costume('button glow'+str(i),button_glow(box),240,180)]
 lists['achievement names']=['achievement names',[a[0] for a in ACHIEVEMENTS]]
 lists['bee names']=['bee names',[n+' Bee' for n in BEE_NAMES]]
 lists['familiar names']=['familiar names',FAMILIAR_NAMES]
 lists['buff names']=['buff names',BUFF_NAMES]
+lists['drop names']=['drop names',DROP_NAMES]
 lists['button labels']=['button labels',[button[3] for button in BUTTONS]]
 backdrops=[costume('theme'+str(i),landscape(i),240,180) for i in range(1,13)]
 # Matrix order: I J L O S T Z. Rotation around SRS centers.

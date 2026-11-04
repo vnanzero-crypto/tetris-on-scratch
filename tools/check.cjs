@@ -19,6 +19,28 @@ const fs=require('fs');
   if(steps>=10000)throw Error('procedure stuck '+name);
  }
  function assert(b,msg){if(!b)throw Error(msg);console.log('PASS',msg)}
+ const total=list=>list.reduce((sum,value)=>sum+Number(value),0);
+ const near=(actual,expected)=>Math.abs(Number(actual)-expected)<1e-6;
+ function capturePen(draw){
+  const segments=[],setXY=t.setXY;
+  t.setXY=function(x,y,...args){
+   const pen=this.getCustomState('Scratch.pen');
+   if(pen?.penDown)segments.push({from:[this.x,this.y],to:[x,y],color:pen.penAttributes.color4f.slice(),diameter:pen.penAttributes.diameter});
+   return setXY.call(this,x,y,...args);
+  };
+  try{draw()}finally{t.setXY=setXY}
+  return segments;
+ }
+ function captureStamps(draw){
+  const stamps=[],stamp=rt._primitives.pen_stamp;
+  rt._primitives.pen_stamp=(args,util)=>{
+   const target=util.target;
+   stamps.push({name:target.getCostumes()[target.currentCostume].name,x:target.x,y:target.y,size:target.size});
+   return stamp(args,util);
+  };
+  try{draw()}finally{rt._primitives.pen_stamp=stamp}
+  return stamps;
+ }
  run('reset');
  assert(get('board').length==200,'200-cell board');
  assert(get('GAME OVER')==0,'spawn is legal');
@@ -285,9 +307,10 @@ const fs=require('fs');
  const modes=['Easy','Normal','Hard','Expert','Nightmare'];
  button('difficulty',0,[16,16,100,42],'Back');modes.forEach((name,i)=>button('difficulty',0,[32,98+i*44,448,132+i*44],name));
  for(const [box,label] of [
-  [[16,16,100,42],'Back'],[[128,16,238,42],'Clear tab'],[[244,16,354,42],'Blocks tab'],[[360,16,470,42],'Auras tab'],
+  [[16,16,100,42],'Back'],[[112,16,198,42],'Clear tab'],[[202,16,288,42],'Blocks tab'],[[292,16,378,42],'Auras tab'],[[382,16,468,42],'Drops tab'],
   [[18,316,164,344],'RGB / Rainbow'],[[310,316,462,344],'Save Profile']])button('cosmetics',0,box,label);
- const cosmeticNames=[['Normal','Fire','Water','Ice','Rainbow','Lightning','Void','Confetti','Honey','Galaxy'],['Classic','Ember','Frost','Prism','Neon Wire','Obsidian','Honeycomb','Plasma','Marble'],['None','Gold','Rainbow','Inferno','Tidal','Glacial','Nebula','Hive']];
+ const dropNames=['White Line','Neon Pulse','Rainbow Beam','Flame Trail','Frost Stream','Void Rift'];
+ const cosmeticNames=[['Normal','Fire','Water','Ice','Rainbow','Lightning','Void','Confetti','Honey','Galaxy'],['Classic','Ember','Frost','Prism','Neon Wire','Obsidian','Honeycomb','Plasma','Marble'],['None','Gold','Rainbow','Inferno','Tidal','Glacial','Nebula','Hive'],dropNames];
  cosmeticNames.forEach((names,tab)=>names.forEach((name,i)=>{const x=12+94*(i%5),y=100+100*Math.floor(i/5);button('cosmetics',tab+1,[x,y,x+82,y+82],name)}));
  for(const [box,label] of [[[16,16,100,42],'Back'],[[166,16,306,42],'General tab'],[[316,16,456,42],'RGB Colors tab'],[[310,316,462,344],'Save Profile']])button('settings',0,box,label);
  button('settings',1,[126,78,456,104],'Player name');modes.forEach((name,i)=>button('settings',1,[126+66*i,116,186+66*i,140],name));
@@ -296,7 +319,7 @@ const fs=require('fs');
   const y=112+30*i+offset;button('settings',2,[136,y-7,366,y+7],title+' '+channel+' slider');button('settings',2,[376,y-10,418,y+10],title+' '+channel+' value');
  });
  for(const [box,label] of [[[18,182,164,202],'Rainbow Accent'],[[174,316,296,344],'Rainbow Keys'],[[18,316,164,344],'Use Theme Colors']])button('settings',2,box,label);
- assert(buttons.length===94&&get('button labels').length===buttons.length,'all ninety-four interface controls have a native hover target');
+ assert(buttons.length===101&&get('button labels').length===buttons.length,'all 101 interface controls have a native hover target');
  const buttonState=presentationState();
  for(let index=0;index<buttons.length;index++){
   const [screen,tab,[x1,y1,x2,y2],label]=buttons[index];
@@ -377,36 +400,97 @@ const fs=require('fs');
  flight=flightFixture(221,163,2,2);
  assert(safeCompanion(...flight),'corner flight reflects within the visible stage');
 
- // Bee buffs are visual stacks with a fade/expiry, never gameplay modifiers.
- set('THEME',1);set('buff stacks',[0,0,0,0]);set('buff life',[0,0,0,0]);run('grant bee buff');
- assert(get('buff stacks').every(x=>Number(x)===0)&&get('buff life').every(x=>Number(x)===0),'ordinary themes never receive Bee Swarm buffs');
+ // Ordinary Bee buffs retain their short lifetime. Chained clears add five
+ // different held effects, which persist together for the entire combo.
+ set('THEME',1);set('COMBO',0);run('reset bee buffs');run('grant bee buff');
+ assert(get('buff stacks').length===12&&get('buff life').length===12&&get('combo buff stacks').length===12&&total(get('buff stacks'))===0&&total(get('combo buff stacks'))===0,'ordinary themes never receive the twelve Bee Swarm buffs');
  set('THEME',11);const buffGuard=beeState();run('grant bee buff');
- assert(get('buff stacks').reduce((a,x)=>a+Number(x),0)===1&&get('buff life').filter(x=>Number(x)===240).length===1,'a clear grants one random cosmetic buff and refreshes its lifetime');
- for(let i=0;i<200;i++)run('grant bee buff');
- assert(get('buff stacks').every(x=>Number(x)>0&&Number(x)<=99)&&get('buff life').every(x=>Number(x)===240),'repeated cosmetic drops can stack all four buff types within their display limits');
+ assert(total(get('buff stacks'))===1&&get('buff life').filter(x=>Number(x)===240).length===1&&total(get('combo buff stacks'))===0,'a first clear grants one random timed cosmetic buff');
+ for(let i=0;i<1000;i++)run('grant bee buff');
+ assert(get('buff stacks').every(x=>Number(x)>0&&Number(x)<=99)&&get('buff life').every(x=>Number(x)===240),'random drops can stack all twelve buff types within display limits');
  assert(beeState()===buffGuard,'gaining and stacking buffs never changes board, scoring, combo or history');
- set('buff stacks',[3,4,2,0]);set('buff life',[2,1,61,0]);run('draw bee buffs');
- assert(JSON.stringify(get('buff life').map(Number))==='[1,0,60,0]'&&JSON.stringify(get('buff stacks').map(Number))==='[3,0,2,0]','buff timers decay, reach their fade interval and remove expired stacks');
- set('buff stacks',[1,2,3,4]);set('buff life',[240,240,240,240]);for(let frame=0;frame<240;frame++)run('draw bee buffs');
- assert(get('buff life').every(x=>Number(x)===0)&&get('buff stacks').every(x=>Number(x)===0),'all cosmetic buff badges disappear after their lifetime');
- run('reset');singleClear();
- assert(Number(get('SCORE'))===100&&Number(get('LINES'))===1&&get('buff stacks').reduce((a,x)=>a+Number(x),0)===1,'an actual Bee Swarm line clear grants one buff with ordinary score and line totals');
- const buffTotal=get('buff stacks').reduce((a,x)=>a+Number(x),0);
+ set('buff stacks',[3,4,2,...Array(9).fill(0)]);set('buff life',[2,1,61,...Array(9).fill(0)]);run('draw bee buffs');
+ assert(JSON.stringify(get('buff life').map(Number))===JSON.stringify([1,0,60,...Array(9).fill(0)])&&JSON.stringify(get('buff stacks').map(Number))===JSON.stringify([3,0,2,...Array(9).fill(0)]),'timed badges decay, fade and remove only their expired stacks');
+ set('buff stacks',Array(12).fill(3));set('buff life',Array(12).fill(240));for(let frame=0;frame<240;frame++)run('draw bee buffs');
+ assert(total(get('buff life'))===0&&total(get('buff stacks'))===0,'ordinary cosmetic badges disappear after their lifetime');
+ clock.projectTimer=()=>testTime;testTime=100;run('reset');set('SCREEN','play');set('has game',1);singleClear();
+ assert(Number(get('SCORE'))===100&&Number(get('LINES'))===1&&total(get('buff stacks'))===1&&total(get('combo buff stacks'))===0,'an actual first Bee Swarm clear grants one ordinary buff without changing scoring');
+ const timedBeforeChain=JSON.stringify(get('buff stacks'));testTime=101;singleClear();
+ assert(Number(get('COMBO'))===2&&total(get('combo buff stacks'))===5&&get('combo buff stacks').filter(x=>Number(x)===1).length===5,'the second clear grants exactly five distinct simultaneous combo effects');
+ assert(JSON.stringify(get('buff stacks'))===timedBeforeChain,'a combo bundle adds held effects independently of the ordinary timed badge');
+ const activeBuffKinds=get('combo buff stacks').flatMap((count,index)=>Number(count)>0?[index+1]:[]);
+ const wisps=captureStamps(()=>run('draw combo wisps')).filter(stamp=>/^buff wisp\d+-/.test(stamp.name));
+ const wispKinds=[...new Set(wisps.map(stamp=>Number(stamp.name.match(/^buff wisp(\d+)-/)[1])))].sort((a,b)=>a-b);
+ assert(JSON.stringify(wispKinds)===JSON.stringify(activeBuffKinds)&&wisps.every(stamp=>Math.abs(stamp.x)>=108&&Math.abs(stamp.x)<214&&Math.abs(stamp.y)<=140),'five different combo effects render together around the protected playfield');
+ const heldBeforeFrames=JSON.stringify(get('combo buff stacks')),heldGuard=beeState();
+ for(let frame=0;frame<260;frame++)run('draw bee buffs');
+ assert(JSON.stringify(get('combo buff stacks'))===heldBeforeFrames&&total(get('buff stacks'))===0,'combo effects outlive ordinary badge timers and stay active while the combo lives');
+ assert(beeState()===heldGuard,'simultaneous held effects remain purely cosmetic');
+ for(const at of [102,103]){testTime=at;singleClear()}
+ assert(Number(get('COMBO'))===4&&total(get('combo buff stacks'))===15&&get('combo buff stacks').some(x=>Number(x)>1),'later chained clears add five effects each and stack repeated rolls');
+ const beforeNoClear=JSON.stringify(get('combo buff stacks'));
  get('board').fill(0);set('piece',4);set('x',3);set('y',18);set('rotation',0);run('lock');
- assert(get('buff stacks').reduce((a,x)=>a+Number(x),0)===buffTotal,'a placement without a line clear grants no cosmetic buff');
+ assert(JSON.stringify(get('combo buff stacks'))===beforeNoClear,'a non-clearing placement grants no combo effects');
+ testTime=104;run('open menu');const heldPaused=JSON.stringify(get('combo buff stacks'));
+ testTime=120;run('render');
+ assert(Number(get('COMBO'))===4&&JSON.stringify(get('combo buff stacks'))===heldPaused,'menu time leaves held combo effects intact');
+ run('resume game');const heldDeadline=Number(get('combo expires'));
+ assert(heldDeadline===123,'resuming shifts the held-effects deadline by the paused duration');
+ testTime=heldDeadline;run('update combo');
+ assert(Number(get('COMBO'))===4&&JSON.stringify(get('combo buff stacks'))===heldPaused,'held effects survive the exact combo deadline');
+ testTime=heldDeadline+.001;run('update combo');
+ assert(Number(get('COMBO'))===0&&total(get('combo buff stacks'))===0,'combo expiry removes all held effects together');
+ assert(captureStamps(()=>run('draw combo wisps')).length===0,'no held-effect wisps render after the combo disappears');
+ set('COMBO',2);set('combo expires',200);run('grant combo buffs');get('board').fill(1);run('spawn');run('draw bee buffs');
+ assert(Number(get('GAME OVER'))===1&&total(get('combo buff stacks'))===0,'topping out clears held combo effects');
  run('reset');
- assert(get('buff stacks').every(x=>Number(x)===0)&&get('buff life').every(x=>Number(x)===0),'starting a new run clears transient cosmetic buffs');
+ assert(total(get('buff stacks'))===0&&total(get('buff life'))===0&&total(get('combo buff stacks'))===0,'new runs clear both timed and held cosmetic effects');
+ set('THEME',1);set('COMBO',2);run('grant combo buffs');
+ assert(total(get('combo buff stacks'))===0,'other themes cannot receive Bee Swarm combo bundles');
+ clock.projectTimer=originalTimer;
 
  set('THEME',12);set('CLEAR EFFECT',5);run('reset');singleClear();
  assert(Number(get('fx style'))===11&&Number(get('fx active'))===1&&get('clear rows').map(Number).join(',')==='19','Isaac clears select the full-row brimstone animation');
  assert(Number(get('SCORE'))===100&&Number(get('LINES'))===1&&get('unlocked').length===50,'brimstone clears retain ordinary scoring and the fifty-achievement catalogue');
- const brimstoneGuard=beeState();for(let frame=0;frame<24;frame++)run('draw clear fx');
- assert(Number(get('fx active'))===0&&beeState()===brimstoneGuard,'brimstone clears fade out without changing gameplay');
- set('THEME',1);run('reset');const dropsBeforeDash=Number(get('lifetime drops'));run('hard drop');
- assert(Number(get('dash active'))===1&&Number(get('dash age'))===0&&Number(get('lifetime drops'))===dropsBeforeDash+1,'a hard drop starts its falling dash animation exactly once');
- const dashGuard=beeState();for(let frame=0;frame<20;frame++)run('draw drop dash');
- assert(Number(get('dash active'))===0&&beeState()===dashGuard,'falling dash trails finish after twenty frames without moving or scoring');
- run('hard drop');run('reset');assert(Number(get('dash active'))===0,'new runs clear unfinished hard-drop trails');
+ const tearFields=['tear x','tear y','tear vx','tear vy','tear kind'];
+ assert(tearFields.every(name=>get(name).length===8)&&[1,2,3,4].every(kind=>get('tear kind').filter(value=>Number(value)===kind).length===2),'each Isaac cleared row launches eight tears across all four tear styles');
+ const tearStart=get('tear y').map(Number),tearSpeed=get('tear vy').map(Number),brimstoneGuard=beeState();set('shake x',0);set('shake y',0);
+ const tearStamps=captureStamps(()=>run('draw clear fx')).filter(stamp=>/^isaac tear\d+-/.test(stamp.name));
+ assert(get('tear y').every((value,index)=>near(value,tearStart[index]+tearSpeed[index]))&&get('tear vy').every((value,index)=>near(value,tearSpeed[index]-.3)),'Isaac tears follow upward arcs with gravity after a clear');
+ assert(tearStamps.length===8&&tearStamps.every(stamp=>Math.abs(stamp.x)<73*.82&&Math.abs(stamp.y)<150*.82),'all four tear styles render inside the well clipping bounds');
+ for(let frame=1;frame<24;frame++)run('draw clear fx');
+ assert(Number(get('fx active'))===0&&tearFields.every(name=>get(name).length===0)&&beeState()===brimstoneGuard,'brimstone and tears expire together without changing gameplay');
+ assert(captureStamps(()=>run('draw isaac tears')).length===0,'expired Isaac clears leave no tear or splash stamps behind');
+ run('reset');for(let row=16;row<20;row++)for(let col=0;col<10;col++)get('board')[row*10+col]=col===4?0:1;
+ set('piece',1);set('rotation',1);set('x',2);set('y',16);run('lock');
+ assert(Number(get('LINES'))===4&&tearFields.every(name=>get(name).length===32),'four-row Isaac clears cap the tear field at thirty-two aligned particles');
+ const quadTearGuard=beeState();for(let frame=0;frame<24;frame++)run('draw clear fx');
+ assert(tearFields.every(name=>get(name).length===0)&&beeState()===quadTearGuard,'the largest tear burst remains bounded and cleans up without awarding extra points');
+ set('THEME',1);run('reset');singleClear();
+ assert(tearFields.every(name=>get(name).length===0),'ordinary themes do not launch Isaac tears');
+ // The default trail follows the dropped piece, rather than unrelated dashes
+ // covering the board. Check every tetromino orientation against its cells.
+ set('THEME',1);set('DROP EFFECT',1);
+ for(let piece=1;piece<=7;piece++)for(let rotation=0;rotation<4;rotation++){
+  run('reset');set('piece',piece);set('rotation',rotation);set('x',3);set('y',2);set('DROP EFFECT',1);
+  const cells=[...String(get('shapes')[(piece-1)*4+rotation])].flatMap((cell,index)=>cell==='1'?[[index%4,Math.floor(index/4)]]:[]);
+  const meanX=total(cells.map(c=>c[0]))/4,meanY=total(cells.map(c=>c[1]))/4,landing=19-Math.max(...cells.map(c=>c[1]));
+  const expectedX=-72+(3+meanX)*16,expectedFrom=152-(2+meanY)*16,expectedTo=152-(landing+meanY)*16;
+  run('hard drop');set('shake x',0);set('shake y',0);
+  const segments=capturePen(()=>run('draw drop dash'));
+  const white=segments.find(s=>s.color.slice(0,3).every(c=>near(c,1))&&near(s.from[0],expectedX*.82)&&near(s.to[0],expectedX*.82)&&near(s.from[1],expectedFrom*.82)&&near(s.to[1],expectedTo*.82));
+  assert(near(get('drop x'),expectedX)&&near(get('drop from y'),expectedFrom)&&near(get('drop to y'),expectedTo)&&Boolean(white),'piece '+piece+' rotation '+rotation+' draws a straight white trail from its actual center to its landing');
+ }
+ run('reset');set('piece',4);set('rotation',0);set('x',3);set('y',2);get('board')[104]=1;run('hard drop');
+ assert(near(get('drop from y'),112)&&near(get('drop to y'),16)&&Number(get('SCORE'))===12,'drop trails stop at an occupied landing surface and preserve hard-drop scoring');
+ for(let style=1;style<=6;style++){
+  run('reset');set('DROP EFFECT',style);const dropsBeforeDash=Number(get('lifetime drops'));run('hard drop');
+  assert(Number(get('dash active'))===1&&Number(get('dash age'))===0&&Number(get('drop style'))===style&&Number(get('lifetime drops'))===dropsBeforeDash+1,'drop style '+style+' starts exactly once with a snapshot of the equipped effect');
+  set('DROP EFFECT',style===6?1:style+1);const dashGuard=beeState();
+  const segments=capturePen(()=>{for(let frame=0;frame<20;frame++)run('draw drop dash')});
+  assert(Number(get('dash active'))===0&&Number(get('drop style'))===style&&segments.length>0&&beeState()===dashGuard,'drop style '+style+' fades after twenty frames without changing gameplay or switching mid-trail');
+ }
+ run('hard drop');run('reset');assert(Number(get('dash active'))===0,'new runs clear unfinished placement trails');
  set('COMBO',5);set('combo expires',clock.projectTimer()+4);const timerState=beeState();run('draw combo timer');
  assert(beeState()===timerState,'the large combo timer is presentation only');
 
@@ -442,6 +526,15 @@ const fs=require('fs');
   for(const value of values){set(choice,value);run('validate cosmetics');assert(Number(get(choice))===value,'unlocked '+choice.toLowerCase()+' '+value+' can be selected');}
  }
  set('BLOCK SKIN',4);set('AURA',2);
+ for(const [draft,expected] of [[0,1],[999,6],[3.9,3]]){
+  set('DROP EFFECT',draft);run('clamp settings');assert(Number(get('DROP EFFECT'))===expected,'drop style '+draft+' clamps to a selectable style');
+ }
+ set('SCREEN','cosmetics');set('cosmetics tab',4);const dropSelectionGuard=beeState();
+ for(let style=1;style<=6;style++){
+  mouse._scratchX=53+94*((style-1)%5)-240;mouse._scratchY=180-(141+100*Math.floor((style-1)/5));run('cosmetics click');
+  assert(Number(get('DROP EFFECT'))===style&&Number(get('profile saved'))===0,'the Drops tab equips '+dropNames[style-1]);
+ }
+ assert(beeState()===dropSelectionGuard,'equipping every placement style preserves the active run and saved history');
  set('SHAKE',999);set('game r',-4);set('game g',999);set('key b',51.9);run('clamp settings');assert(Number(get('SHAKE'))===100&&Number(get('game r'))===0&&Number(get('game g'))===255&&Number(get('key b'))===51,'slider values are safely clamped to valid integer ranges');
  set('name draft','Nova_12!✨');run('sanitize name');assert(get('PLAYER NAME')==='Nova_12','name entry keeps supported letters and numbers');
  set('name draft','abcdefghijklmnop');run('sanitize name');assert(get('PLAYER NAME').length===12,'names are limited to twelve displayable characters');
@@ -458,11 +551,18 @@ const fs=require('fs');
  assert(JSON.stringify(drawnColorNames.map(name=>get(name)))!==rainbowStart&&drawnColorNames.every(name=>Number.isFinite(Number(get(name)))&&Number(get(name))>=0&&Number(get(name))<=255),'rainbow accent and key colors animate within valid RGB channels');
  assert(JSON.stringify(colorNames.map(name=>get(name)))===storedColors,'rainbow animation preserves the player’s saved solid RGB colors');
  clock.projectTimer=originalTimer;
- set('name draft','Nova_12');run('sanitize name');set('SHAKE',75);set('DIFFICULTY',5);set('CLEAR EFFECT',10);set('BEST SCORE',5432);
+ set('name draft','Nova_12');run('sanitize name');set('SHAKE',75);set('DIFFICULTY',5);set('CLEAR EFFECT',10);set('DROP EFFECT',6);set('BEST SCORE',5432);
  run('checkpoint run');const profileHistory=JSON.stringify(historyLists.map(name=>get(name)));run('save profile');
- assert(get('saved profile').length===15&&Number(get('profile saved'))===1&&get('settings notice')==='saved','Save Profile commits a versioned snapshot and shows confirmation');
- const profileSnapshot=JSON.stringify(get('saved profile'));set('PLAYER NAME','Changed');set('SHAKE',0);set('DIFFICULTY',1);set('game r',0);set('BLOCK SKIN',1);run('load profile');
- assert(get('PLAYER NAME')==='Nova_12'&&Number(get('SHAKE'))===75&&Number(get('DIFFICULTY'))===5&&Number(get('CLEAR EFFECT'))===10,'Load Profile restores the saved name, Nightmare difficulty and expanded effect choice');
+ assert(get('saved profile').length===16&&Number(get('saved profile')[0])===2&&Number(get('saved profile')[15])===6&&Number(get('profile saved'))===1&&get('settings notice')==='saved','Save Profile commits a version-two snapshot including the selected drop style');
+ const legacyProfile=[1,...get('saved profile').slice(1,15)],migrationUnlocks=JSON.stringify(get('unlocked'));
+ set('saved profile',legacyProfile);set('PLAYER NAME','Changed');set('DROP EFFECT',4);run('load profile');
+ assert(get('PLAYER NAME')==='Nova_12'&&Number(get('SHAKE'))===75&&Number(get('DIFFICULTY'))===5&&Number(get('CLEAR EFFECT'))===10&&Number(get('game custom'))===2&&Number(get('key custom'))===2&&Number(get('DROP EFFECT'))===1,'version-one profiles restore every legacy setting and default to White Line');
+ assert(JSON.stringify(get('saved profile'))===JSON.stringify(legacyProfile)&&JSON.stringify(historyLists.map(name=>get(name)))===profileHistory&&JSON.stringify(get('unlocked'))===migrationUnlocks,'loading a legacy profile preserves its snapshot, history and unlocks');
+ run('save profile');
+ assert(get('saved profile').length===16&&Number(get('saved profile')[0])===2&&Number(get('saved profile')[15])===1,'saving a loaded legacy profile upgrades it to version two');
+ set('DROP EFFECT',6);run('save profile');
+ const profileSnapshot=JSON.stringify(get('saved profile'));set('PLAYER NAME','Changed');set('SHAKE',0);set('DIFFICULTY',1);set('game r',0);set('BLOCK SKIN',1);set('DROP EFFECT',3);run('load profile');
+ assert(get('PLAYER NAME')==='Nova_12'&&Number(get('SHAKE'))===75&&Number(get('DIFFICULTY'))===5&&Number(get('CLEAR EFFECT'))===10&&Number(get('DROP EFFECT'))===6,'Load Profile restores the name, difficulty, clear effect and equipped placement style');
  assert(Number(get('game r'))===12&&Number(get('key r'))===255&&Number(get('game custom'))===2&&Number(get('key custom'))===2&&Number(get('BLOCK SKIN'))===4,'Load Profile restores stored RGB, rainbow modes and earned cosmetic choices');
  assert(JSON.stringify(historyLists.map(name=>get(name)))===profileHistory&&get('unlocked').every(x=>Number(x)===1),'loading settings preserves score history and unlocked rewards');
  set('key custom',1);run('update rainbow');set('settings tab',2);run('render settings');const rgbPen=t.getCustomState('Scratch.pen').penAttributes.color4f.slice(0,3).map(x=>Math.round(x*255));set('key custom',2);
@@ -471,11 +571,13 @@ const fs=require('fs');
  assert(costumes.filter(c=>/^element(?:[1-9]|10)-/.test(c.name)).length===100,'ten selectable clear effects each include ten animation frames');
  assert(costumes.filter(c=>/^element11-/.test(c.name)).length===10&&Boolean(costumes.find(c=>c.name==='element spark11')),'Isaac includes ten brimstone clear frames and a matching spark');
  assert(costumes.filter(c=>/^familiar\d+-[0-3]$/.test(c.name)).length===40&&get('familiar names').length===10&&new Set(get('familiar names').map(String)).size===10,'ten distinct familiars each include four animation frames');
- assert(costumes.filter(c=>/^drop dash\d$/.test(c.name)).length===10,'Space-drop trails include ten falling dash frames');
- assert(costumes.filter(c=>/^buff icon[1-4]$/.test(c.name)).length===4&&get('buff names').length===4,'all four cosmetic Bee Swarm buffs have an icon and readable name');
- const brimstone=costumes.find(c=>c.name==='element11-0'),dash=costumes.find(c=>c.name==='drop dash0');
+ assert(costumes.filter(c=>/^drop tip[1-6]-[0-5]$/.test(c.name)).length===36&&JSON.stringify(get('drop names'))===JSON.stringify(dropNames),'all six selectable placement styles include six landing-flare frames');
+ assert(!costumes.some(c=>/^drop dash\d$/.test(c.name)),'unrelated full-board falling dashes are removed');
+ assert(costumes.filter(c=>/^buff icon(?:[1-9]|1[0-2])$/.test(c.name)).length===12&&get('buff names').length===12&&new Set(get('buff names').map(String)).size===12,'all twelve Bee Swarm buffs have distinct readable icons and names');
+ assert(costumes.filter(c=>/^buff wisp(?:[1-9]|1[0-2])-[0-3]$/.test(c.name)).length===48,'all twelve held effects include four animated wisp frames');
+ assert(costumes.filter(c=>/^isaac tear[1-4]-[0-3]$/.test(c.name)).length===16&&costumes.filter(c=>/^tear splash[1-4]-[0-5]$/.test(c.name)).length===24,'Isaac includes four animated tear kinds and their splash frames');
+ const brimstone=costumes.find(c=>c.name==='element11-0');
  assert(Boolean(brimstone)&&brimstone.rotationCenterX===80&&brimstone.rotationCenterY===14&&/\bwidth="160"/.test(Buffer.from(brimstone.asset.data).toString('utf8')),'brimstone clears align with the complete ten-column row');
- assert(Boolean(dash)&&dash.rotationCenterX===80&&dash.rotationCenterY===160&&/\bwidth="160"/.test(Buffer.from(dash.asset.data).toString('utf8'))&&/\bheight="320"/.test(Buffer.from(dash.asset.data).toString('utf8')),'falling dash trails align with the logical playfield');
  assert(costumes.filter(c=>c.name.startsWith('skin')).length===112,'eight earned skins include every block and ghost color');
  assert(costumes.filter(c=>c.name.startsWith('aura')).length===56,'seven earned auras include eight animation frames each');
  assert(costumes.filter(c=>/^achievement\d+-[01]$/.test(c.name)).length===100,'all fifty achievement cards include distinct locked and unlocked states');
@@ -483,7 +585,7 @@ const fs=require('fs');
  assert(Boolean(beam)&&beam.rotationCenterX===80&&beam.rotationCenterY===16,'the expanded rainbow beam is centered on a full row and twice the normal height');
  const beamSvg=beam?Buffer.from(beam.asset.data).toString('utf8'):'';
  assert(/\bwidth=["']160["']/.test(beamSvg)&&/\bheight=["']32["']/.test(beamSvg),'rainbow clear artwork spans the complete 160-pixel row with a 32-pixel burst');
- for(let tab=1;tab<=3;tab++){
+ for(let tab=1;tab<=4;tab++){
   set('cosmetics tab',tab);set('SCREEN','cosmetics');const before=beeState();run('render cosmetics');
   assert(get('SCREEN')==='cosmetics'&&Number(get('cosmetics tab'))===tab&&beeState()===before,'Cosmetics tab '+tab+' renders without affecting gameplay or history');
  }
@@ -499,6 +601,7 @@ const fs=require('fs');
  assert(historyLists.every(name=>JSON.stringify(restored.variables[name].value)===JSON.stringify(get(name))),'saving and reloading the Scratch project preserves every run-history column');
  assert(Number(restored.variables['BEST SCORE'].value)===5432&&Number(restored.variables['run serial'].value)===Number(get('run serial')),'saved project reload preserves the lifetime best and next-run identifier');
  assert(JSON.stringify(restored.variables['saved profile'].value)===profileSnapshot&&restored.variables['PLAYER NAME'].value==='Nova_12','saved profile and typed name survive exporting and reopening the project');
+ assert(Number(restored.variables['DROP EFFECT'].value)===6&&Number(restored.variables['saved profile'].value[0])===2,'the equipped placement style survives an actual exported project reload');
  assert(restored.variables.unlocked.value.every(x=>Number(x)===1),'unlocked cosmetic achievements survive exporting and reopening the project');
  restoredVm.quit();
  console.log('Scratch VM loaded native project and completed gameplay checks.');

@@ -250,28 +250,26 @@ def _menu_background():
 
 
 def menu_cosmetics(tab='Clear'):
-    """Cosmetics shell.  Ten card hitboxes are 82 x 82 at (12+94c,100+100r).
+    """Cosmetics shell with 82 x 82 cards at (12+94c,100+100r).
 
     Labels, equipped markers and item previews are drawn by the Scratch UI.
-    The Clear, Blocks and Auras tabs also accept the numbers 1, 2 and 3.
     """
-    tab = _named(tab, ['Clear', 'Blocks', 'Auras'])
+    tab = _named(tab, ['Clear', 'Blocks', 'Auras', 'Drops'])
     b = _menu_background() + _back_button()
-    for index, label in enumerate(['Clear', 'Blocks', 'Auras']):
-        x = 128 + index * 116
+    for index, label in enumerate(['Clear', 'Blocks', 'Auras', 'Drops']):
+        x = 112 + index * 90
         selected = tab == label
-        b += rect(x, 16, 110, 26, '#273755' if selected else '#121b31', '#8297ce' if selected else '#303c59', r=4)
-        b += text(x + 55, 33, label.upper(), 10, '#e1eaff' if selected else '#9faeca', extra='text-anchor="middle" letter-spacing="1.5"')
+        b += rect(x, 16, 86, 26, '#273755' if selected else '#121b31', '#8297ce' if selected else '#303c59', r=4)
+        b += text(x + 43, 33, label.upper(), 9, '#e1eaff' if selected else '#9faeca', extra='text-anchor="middle" letter-spacing="1.2"')
         if selected:
-            b += rect(x + 23, 40, 64, 2, '#a9bfff', r=1)
+            b += rect(x + 16, 40, 54, 2, '#a9bfff', r=1)
     b += text(16, 69, 'COSMETICS', 19, '#edf2ff', 300, 'letter-spacing="3.5"')
     b += text(468, 67, tab.upper(), 9, '#8192b9', extra='text-anchor="end" letter-spacing="2"')
-    for row in range(2):
-        for col in range(5):
-            x, y = 12 + 94 * col, 100 + 100 * row
-            b += rect(x, y, 82, 82, '#111d33', '#354460', r=6)
-            b += rect(x + 3, y + 3, 76, 53, '#17223a', r=4)
-            b += _path(f'M{x + 9} {y + 60}H{x + 73}', stroke='#34405b', width=.6)
+    for index in range({'Clear':10, 'Blocks':9, 'Auras':8, 'Drops':6}[tab]):
+        x, y = 12 + 94 * (index % 5), 100 + 100 * (index // 5)
+        b += rect(x, y, 82, 82, '#111d33', '#354460', r=6)
+        b += rect(x + 3, y + 3, 76, 53, '#17223a', r=4)
+        b += _path(f'M{x + 9} {y + 60}H{x + 73}', stroke='#34405b', width=.6)
     b += rect(18, 316, 146, 28, '#21314c', '#657cb0', r=4)
     b += text(91, 334, 'RGB / RAINBOW', 10, '#c5d4ff', extra='text-anchor="middle" letter-spacing="1"')
     b += rect(310, 316, 152, 28, '#21314c', '#657cb0', r=4)

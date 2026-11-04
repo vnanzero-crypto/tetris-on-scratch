@@ -20,7 +20,7 @@ During play or after game over, press **M** or click the upper-left **Menu** but
 | S or Down | Soft drop |
 | W or Up | Rotate clockwise |
 | Z | Rotate counterclockwise |
-| Space | Hard drop with falling dash trails |
+| Space | Hard drop with a piece-to-landing trail |
 | C | Hold / swap once per piece |
 | R | Open the new-run difficulty picker |
 | M / Menu button | Return to main menu |
@@ -31,7 +31,7 @@ During play or after game over, press **M** or click the upper-left **Menu** but
 
 Holding W or Up makes one clockwise rotation; release both and press again for another rotation. The live input display shows only ↑ above ← ↓ →, like a physical keyboard. Matching WASD actions light the corresponding arrow. Gameplay control hints are hidden.
 
-All **94 clickable controls** light up on hover, including menu buttons, cosmetic cards, settings controls, and page navigation. Hovering menu actions also reveals animated related objects. Theme outlines follow the current four-column grid, with their animated preview in the footer. Twenty-four decorative motes drift around menus and outside the playfield. These visual effects do not change the board, score, or input.
+All **101 clickable controls** light up on hover, including menu buttons, cosmetic cards, settings controls, and page navigation. Hovering menu actions also reveals animated related objects. Theme outlines follow the current four-column grid, with their animated preview in the footer. Twenty-four decorative motes drift around menus and outside the playfield. These visual effects do not change the board, score, or input.
 
 ## Five difficulties
 
@@ -51,19 +51,24 @@ Gravity accelerates with level. All five modes use the same scoring rules.
 
 ## Cosmetics, RGB, and settings
 
-Open **Cosmetics** to preview and equip clear effects, block styles, and board auras. Locked cards are marked; Achievements lists the requirements for their rewards. **RGB / Rainbow** opens the color controls, and **Save Profile** commits the selected appearance.
+Open **Cosmetics** to preview and equip clear effects, block styles, board auras, and drop trails in four compact tabs. Locked cards are marked; Achievements lists the requirements for their rewards. **RGB / Rainbow** opens the color controls, and **Save Profile** commits the selected appearance.
 
 | Category | Available choices |
 | --- | --- |
 | Clear effects — 10 | Normal, Fire, Water, Ice, Rainbow, Lightning, Void, Confetti, Honey, Galaxy |
 | Block styles — 9 | Classic, Ember, Frost, Prism, Neon Wire, Obsidian, Honeycomb, Plasma, Marble |
 | Auras — 7 plus None | Gold, Rainbow, Inferno, Tidal, Glacial, Nebula, Hive |
+| Drop trails — 6 | White Line, Neon Pulse, Rainbow Beam, Flame Trail, Frost Stream, Void Rift |
 
 Normal, Fire, Water, Ice, and Rainbow clears are available immediately. The five added clear effects and all non-default block styles and auras are achievement rewards. Classic uses the selected theme’s seven piece colors and textures.
 
 Rainbow clears have a **160 × 32** logical-pixel spectrum spanning all ten board columns, with larger prism sparks. Every clear style follows the actual cleared rows and fades after 24 rendered frames.
 
-Pressing **Space** during play briefly sends sparse dash lines falling down the well. The trails sit behind the pieces and finish after 20 rendered frames. The Binding of Isaac theme supplies its own brimstone clear animation while retaining your equipped cosmetic choice for other themes.
+Pressing **Space** during play draws a straight trail from the active piece's center to its actual landing center. **White Line** is the default; the **Drops** tab adds five alternatives, all available immediately. **Neon Pulse** uses your game-accent RGB color, including Rainbow mode. Trails stay behind the pieces, add a small landing flare, and fade after 20 rendered frames. The Binding of Isaac theme supplies its own brimstone clear animation while retaining your equipped clear cosmetic for other themes.
+
+![Selectable drop styles](docs/drop-cosmetics.png)
+
+![White trail from the piece to its landing](docs/white-drop-trail.png)
 
 ![Clear effects](docs/cosmetics-clear.png)
 
@@ -130,11 +135,13 @@ Open **Themes** and select a card in the four-column, three-row gallery. Use **1
 
 **Beeswarm Sim Theme** adds one flying bee per line cleared in the current run, up to ten. Original fan artwork depicts Basic, Bomb, Cool, Rascal, Bubble, Rage, Commander, Music, Diamond, and Tabby bees. Each bee has an independent random flight path, with changing direction and speed. They can cross the upper and lower corridors and roam around the screen while avoiding the protected playfield, including space for maximum camera shake.
 
-Every line-clear event also grants one random cosmetic buff: **Bomb Honey**, **Flower Honey**, **Bubble Pollen**, or **Blue Haste**. Icon badges stack down the top-left gutter, outside the board; hover a badge to read its name. Repeated picks add to its count, up to 99, and refresh its lifetime. Badges last 240 rendered frames and fade during the final 60; expiry removes the stack. The menu pauses them, and a new run clears them. Buffs change no scoring, gravity, movement, or collisions.
+There are **12 cosmetic buffs**: Bomb Honey, Flower Honey, Bubble Pollen, Blue Haste, Red Boost, Blue Boost, White Boost, Focus, Melody, Inspire, Rage, and Baby Love. The first clear of a chain grants one random timed buff, lasting 240 rendered frames with a fade during its final 60 frames.
+
+Each chained clear at **COMBO 2 or higher grants five different random buffs**. Later bundles can add stacks to the same types. These combo stacks stay active until the combo expires, a new run starts, or the run ends. Their matching wisps, rings, pollen, sparks, bubbles, notes, and hearts animate together outside the board. Bright badges stack down the top-left gutter; hover to read a name. Counts combine timed and combo stacks, displaying up to 99. A first-clear timed buff can remain for its original lifetime after the combo ends. The menu pauses the combo and timed-buff decay. All buffs are cosmetic and leave scoring, gravity, movement, and collisions intact.
 
 ![Roaming bees and cosmetic buff stacks](docs/beeswarm-gameplay.png)
 
-**Binding of Isaac** adds one floating familiar per line cleared in the current run, up to ten. Original fan artwork depicts Brother Bobby, Sister Maggy, Little Steven, Little Brimstone, Demon Baby, Ghost Baby, Rotten Baby, Seraphim, Guardian Angel, and Incubus. Their independent random paths use the same protected area as the bees. Clears fire a full-row **brimstone beam** with a red-black glow, white core, runes, and sparks. The theme and familiars are cosmetic and leave gameplay rules intact.
+**Binding of Isaac** adds one floating familiar per line cleared in the current run, up to ten. Original fan artwork depicts Brother Bobby, Sister Maggy, Little Steven, Little Brimstone, Demon Baby, Ghost Baby, Rotten Baby, Seraphim, Guardian Angel, and Incubus. Their independent random paths use the same protected area as the bees. Clears fire a full-row **brimstone beam** with a red-black glow, white core, runes, and sparks, plus **blue, blood, spectral, and golden tears** with splash rings. Each cleared row launches eight tears, up to 32 on a four-line clear; the arcs stay clipped to the well and expire with the 24-frame clear animation. The theme, familiars, and tear effects leave gameplay rules intact.
 
 ![Familiars and brimstone clear](docs/isaac-gameplay.png)
 
@@ -158,7 +165,7 @@ The artwork is original and TETR.IO-inspired. Online multiplayer, rankings, and 
 
 ## Saving your name, preferences, and runs
 
-**Save Profile** stores the name, shake, preferred difficulty, equipped cosmetics, RGB values, and rainbow/theme switches inside the loaded project. A **PROFILE SAVED** confirmation appears. The next green flag restores that snapshot; unsaved settings can be replaced by the last saved profile. Scores and earned progress are recorded independently.
+**Save Profile** stores the name, shake, preferred difficulty, equipped cosmetics including the drop style, RGB values, and rainbow/theme switches inside the loaded project. A **PROFILE SAVED** confirmation appears. The next green flag restores that snapshot; unsaved settings can be replaced by the last saved profile. Version-two snapshots add the drop style; older version-one snapshots retain all their settings and use White Line by default. Scores and earned progress are recorded independently.
 
 **Run History** retains the newest **20 runs**, five per page, plus a personal best that never decreases when older records are trimmed. Rows include run number, score, lines, highest combo, last-used theme, status, and difficulty. A run is checkpointed during play and finalized on restart or game over. Stop followed by the green flag marks its last record Stopped without duplicating it.
 
@@ -181,6 +188,6 @@ npm install --prefix /tmp/tetris-check scratch-vm@5.0.300 scratch-storage@4.1.27
 NODE_PATH=/tmp/tetris-check/node_modules node tools/check.cjs
 ```
 
-All **457 native Scratch VM assertions** passed, covering movement and scoring, timed combos, pause/resume, all twelve themes, five difficulty timings, the 50-entry achievement catalogue, cosmetic locks and unlocks, RGB/rainbow modes, 4,000 companion flight steps, cosmetic buffs, clear and dash lifecycles, all 94 button hover bounds, history alignment, and Save Profile serialization. Headless checks omit a renderer and can emit costume-renderer warnings.
+All **540 native Scratch VM checks** passed, including exact drop endpoints for all 28 piece orientations, six drop styles, five distinct buffs per combo clear, simultaneous effects and expiry, tear physics, all 101 hover controls, and old/new saved-profile restoration. The suite also covers movement and scoring, combos, pause/resume, themes, difficulty, achievements, companion flight, and run history. Headless checks omit a renderer and can emit costume-renderer warnings.
 
-Chromium verified all 94 hover targets, the corrected theme gallery, independently moving bees and familiars outside the protected board, one random cosmetic buff per Bee Swarm clear, paused buff decay, rendered dash trails and brimstone beams, and exported `.sb3` reload persistence. Previous browser checks also covered the difficulty picker and instant Resume, every cosmetic choice, all achievement pages, U without fake scores, rainbow colors, and Stop/green-flag persistence. Screenshots use scripted board and score fixtures.
+Chromium verified all six drop selections, the white trail's rendered endpoints, five simultaneous random combo effects and stacking, paused effects and combo expiry, all four tear types with splash rings, all 101 hover controls, and the saved drop choice after actual `.sb3` export/reload. Earlier checks also covered the difficulty picker and instant Resume, every cosmetic choice, all achievement pages, U without fake scores, rainbow colors, roaming companions, and Stop/green-flag persistence. Screenshots use scripted board and score fixtures.

@@ -11,7 +11,16 @@ FAMILIAR_NAMES = [
     'Demon Baby', 'Ghost Baby', 'Rotten Baby', 'Seraphim',
     'Guardian Angel', 'Incubus',
 ]
-BUFF_NAMES = ['Bomb Honey', 'Flower Honey', 'Bubble Pollen', 'Blue Haste']
+BUFF_NAMES = [
+    'Bomb Honey', 'Flower Honey', 'Bubble Pollen', 'Blue Haste',
+    'Red Boost', 'Blue Boost', 'White Boost', 'Focus',
+    'Melody', 'Inspire', 'Rage', 'Baby Love',
+]
+BUFF_COLORS = [
+    '#ffb35d', '#ffe384', '#87e2f0', '#a7cfff',
+    '#ff8794', '#7ebcff', '#f3f5dc', '#b5e8b4',
+    '#ddacff', '#fff2a1', '#ff785d', '#ffa9cf',
+]
 
 
 def _path(d, fill='none', stroke='none', width=1, extra=''):
@@ -157,10 +166,9 @@ def brimstone_spark():
 
 
 def buff_icon(kind=1):
-    """20×20 badge for one of four purely cosmetic Bee Swarm-style buffs."""
+    """20×20 badge for one of twelve purely cosmetic Bee Swarm-style buffs."""
     kind = _index(kind, BUFF_NAMES)
-    colors = ['#ffb35d', '#ffe384', '#87e2f0', '#a7cfff']
-    c = colors[kind-1]
+    c = BUFF_COLORS[kind-1]
     b = rect(.5,.5,19,19,'#111d2b',c,4,extra='stroke-width=".7" fill-opacity=".94"')
     if kind == 1:
         b += _circle(10, 12, 5.5, '#3b4856', '#cad6dc', .65)
@@ -176,9 +184,37 @@ def buff_icon(kind=1):
         b += _circle(14.5,5.5,2.2,'#66cbdf','#c5ffff',.7,'fill-opacity=".3"')
         b += _path('M5.5 9Q6 6 8.5 6M7 16H13', stroke='#eaffff', width=1)
         b += _circle(13,13.5,.8,'#d8ffff')
-    else:
+    elif kind == 4:
         b += _path('M11 3L5 11H9L7 18L15 8H11L14 3Z','#a2ceff','#e4f5ff',.7)
         b += _path('M3 6H6M14 15H17M3 15H5',stroke='#6e9de0',width=.8)
+    elif kind in (5, 6, 7):
+        # Three pollen flowers carry distinct red, blue and ivory boost marks.
+        dark = ['#8a3b50', '#365789', '#8e916c'][kind-5]
+        for x,y in [(10,5.1),(5.3,8.6),(7.1,14.1),(12.9,14.1),(14.7,8.6)]:
+            b += _ellipse(x,y,2.5,3,c,dark,.55)
+        b += _circle(10,9.6,3.1,dark,c,.6)
+        b += _path('M10 7.6V11.6M8 9.6H12',stroke='#fffceb',width=1)
+        b += _path('M5 17H15M6 15.5L4 17L6 18.5M14 15.5L16 17L14 18.5',stroke=c,width=.65)
+    elif kind == 8:
+        b += _path('M3 10Q10 2 17 10Q10 18 3 10Z','#243f34',c,.8)
+        b += _circle(10,10,3.7,'none','#efffda',.7)+_circle(10,10,1.6,c)
+        b += _path('M10 2V4M10 16V18M2 10H4M16 10H18',stroke='#f3ffdc',width=.8)
+    elif kind == 9:
+        b += _path('M8 14V5L15 3V12M8 6L15 4',stroke=c,width=1.4)
+        b += _ellipse(5.8,14.5,2.8,2,'#ca88ef','#f5d8ff',.55)
+        b += _ellipse(12.8,12.5,2.8,2,'#ca88ef','#f5d8ff',.55)
+        b += _path('M3 6L4 4L5 6L4 8Z','#f8eaff')
+    elif kind == 10:
+        b += _path('M10 2.6L12.2 7.3L17.4 8L13.6 11.6L14.5 16.8L10 14.3L5.5 16.8L6.4 11.6L2.6 8L7.8 7.3Z',c,'#fffbd8',.65)
+        b += _path('M10 6L11 9L14 9.3L11.5 11L12 13.5L10 12.3L8 13.5L8.5 11L6 9.3L9 9Z','#dcad4c')
+    elif kind == 11:
+        b += _path('M10 2L12 7L16 5L14 11L17 14L12 17L8 17L3 14L6 11L4 5L8 7Z','#bd3f43',c,.75)
+        b += _path('M5.5 9L8.5 10.3M11.5 10.3L14.5 9',stroke='#fff0bd',width=1.2)
+        b += _path('M7 14L9 12.6L10 14L11 12.6L13 14',stroke='#ffe6ad',width=.9)
+    else:
+        b += _path('M10 16.5C7 14.5 3.1 11.4 3.1 7.7C3.1 3 8.2 2.8 10 6C11.8 2.8 16.9 3 16.9 7.7C16.9 11.4 13 14.5 10 16.5Z','#e987b6','#ffe6ed',.7)
+        b += _path('M6 7Q6 5.5 7.5 5.5',stroke='#fff2f2',width=1.1)
+        b += _path('M7.5 10Q8.3 10.8 9.1 10M10.9 10Q11.7 10.8 12.5 10M9 12Q10 13 11 12',stroke='#873e68',width=.65)
     return svg(b, 20, 20)
 
 
@@ -186,6 +222,78 @@ def buff_label(kind=1):
     """60×12 slim buff label, centered at (30,6)."""
     kind = _index(kind, BUFF_NAMES)
     return svg(text(0, 8.7, BUFF_NAMES[kind-1].upper(), 5.6, '#d8e8f2', 300), 60, 12)
+
+
+def buff_wisp(kind=1, frame=0):
+    """24×24 transparent buff mote, four looping frames, center at (12,12).
+
+    The engine can layer several types at once in the outer stage corridors.
+    Each animation retains its own recognizable pollen, music, star or heart
+    motif instead of tinting one generic spark for every active effect.
+    """
+    kind = _index(kind, BUFF_NAMES)
+    f = int(frame) % 4
+    c = BUFF_COLORS[kind-1]
+    pulse = [1, 1.12, 1.04, .92][f]
+    drift = [0, -.7, 0, .7][f]
+    b = f'<g transform="translate(12 {12+drift}) scale({pulse}) translate(-12 -12)" opacity="{[.72,.9,.78,.62][f]}">'
+    if kind == 1:
+        r = 4.5 + f*.8
+        b += _circle(12,12,r,'none',c,.65,'opacity=".65"')
+        b += _path('M12 4L13.6 9.2L19 8L15.6 12L19 16L13.5 14.8L12 20L10.5 14.8L5 16L8.4 12L5 8L10.4 9.2Z',c,extra='opacity=".35"')
+        b += _circle(12,12,2.5,'#ffead0')
+        b += _path(f'M{3+f} 4L{5+f} 6M{21-f} 18L{19-f} 16',stroke=c,width=.8)
+    elif kind == 2:
+        b += f'<g transform="rotate({f*18} 12 12)">'
+        for x,y in [(12,5),(5.4,9.8),(7.9,17.5),(16.1,17.5),(18.6,9.8)]:
+            b += _ellipse(x,y,3.2,3.7,c,extra='opacity=".55"')
+        b += _circle(12,12,3.6,'#fff6c0')+'</g>'
+        b += _circle(3+f,3.5,1,c)+_circle(21-f,20.5,.8,'#ffeaae')
+    elif kind == 3:
+        b += _circle(10,12,5.6+f*.25,c,'#d0fcff',.6,'fill-opacity=".12"')
+        b += _circle(18-f*.6,5+f*.6,2.2,'none','#b8ffff',.55)
+        b += _path('M6.2 10Q7 7.4 10 7M13 16L14.5 14.5',stroke='#eaffff',width=.8)
+        b += _circle(4+f*.4,20-f*.5,1,c,extra='opacity=".7"')
+    elif kind == 4:
+        b += _path('M13 3L6 13H11L9 21L18 10H13L16 3Z',c,'#d9f1ff',.5)
+        b += _path(f'M{3+f*.3} 6H8M2 10H6M{3+f*.4} 17H7',stroke=c,width=.8,extra='opacity=".45"')
+    elif kind in (5,6,7):
+        # Distinct pollen boosts: rising ribbons and a bright flower center.
+        turn = (f*19 + (kind-5)*30)
+        b += f'<g transform="rotate({turn} 12 12)">'
+        b += _path('M4 13Q4 4 12 4Q20 4 20 12M20 11L18 14L16 10M20 12Q20 20 12 20Q4 20 4 14M4 15L6 12L8 16',stroke=c,width=.9,extra='opacity=".65"')
+        for x,y in [(12,8),(8.2,10.8),(9.6,15.3),(14.4,15.3),(15.8,10.8)]:
+            b += _circle(x,y,2,c,extra='opacity=".45"')
+        b += _circle(12,12,2.1,'#fffdf1')+'</g>'
+        if kind==5:b += _path('M2 3L4 5M20 19L22 21',stroke='#ffc6b9',width=.8)
+        elif kind==6:b += _circle(3,4+f*.2,1.2,'#d2eaff')+_circle(21,20-f*.2,.9,'#a7d8ff')
+        else:b += _path('M3 3V7M1 5H5M21 17V21M19 19H23',stroke='#ffffdf',width=.75)
+    elif kind == 8:
+        r = 6 + f*.45
+        b += _circle(12,12,r,'none',c,.6,'opacity=".55"')
+        b += _path('M3 12Q12 4 21 12Q12 20 3 12Z','none',c,.75)
+        b += _circle(12,12,2.6,'#efffe4',c,.5)
+        b += _path('M12 1V5M12 19V23M1 12H5M19 12H23',stroke=c,width=.75,extra='opacity=".7"')
+    elif kind == 9:
+        b += _path('M10 16V6L18 4V14M10 8L18 6',stroke=c,width=1.2)
+        b += _ellipse(7.8,16.5,2.9,2,c,'#f4d9ff',.45)
+        b += _ellipse(15.8,14.5,2.9,2,c,'#f4d9ff',.45)
+        b += _path(f'M{3+f*.25} 4Q1 7 3 10M{21-f*.25} 17Q23 14 21 11',stroke='#e8c7ff',width=.65,extra='opacity=".5"')
+    elif kind == 10:
+        b += f'<g transform="rotate({f*12} 12 12)">'
+        b += _path('M12 3L14.6 9L21 9.6L16.1 13.8L17.5 20L12 16.7L6.5 20L7.9 13.8L3 9.6L9.4 9Z',c,'#fffad6',.6)
+        b += _path('M12 7L13 11L17 11.2L14 13.3L14.7 16.8L12 15L9.3 16.8L10 13.3L7 11.2L11 11Z','#fffef3',extra='opacity=".7"')+'</g>'
+        b += _circle(3,3,.8,c)+_circle(21,21,1,c)
+    elif kind == 11:
+        b += _path('M12 2L15 9L20 6L17 14L21 18L14 22L10 22L3 18L7 14L4 6L9 9Z',c,extra='opacity=".45"')
+        b += _path('M6 10L10 12M14 12L18 10',stroke='#fff2bc',width=1.4)
+        b += _path('M9 17L11 15L12 17L13 15L15 17',stroke='#fff0c1',width=.9)
+        b += _path(f'M{2+f*.3} 2L4 6M{22-f*.3} 2L20 6',stroke='#ffb6a2',width=.9)
+    else:
+        b += _path('M12 21C8.8 18.4 4 14.7 4 10.1C4 4.9 9.7 4.5 12 8C14.3 4.5 20 4.9 20 10.1C20 14.7 15.2 18.4 12 21Z',c,'#ffe0ec',.6, 'fill-opacity=".55"')
+        b += _path('M7 10Q7 7.8 9 7.8',stroke='#fff4f4',width=1)
+        b += _path(f'M{3+f*.3} 3V7M{1+f*.3} 5H{5+f*.3}M20 1V5M18 3H22',stroke='#ffd8ed',width=.6)
+    return svg(b+'</g>',24,24)
 
 
 def hard_drop_dash(frame=0):

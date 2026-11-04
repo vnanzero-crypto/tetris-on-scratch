@@ -5,6 +5,7 @@ Tab zero is always visible; other tabs belong to Settings or Cosmetics.
 """
 from visuals import svg, rect, THEME_NAMES
 from progression import DIFFICULTY_NAMES, EFFECT_NAMES, SKIN_NAMES, AURA_NAMES
+from impact_art import DROP_NAMES
 
 
 BUTTONS = []
@@ -43,14 +44,15 @@ for index, name in enumerate(DIFFICULTY_NAMES):
 
 for box, label in [
     ((16, 16, 100, 42), 'Back'),
-    ((128, 16, 238, 42), 'Clear tab'),
-    ((244, 16, 354, 42), 'Blocks tab'),
-    ((360, 16, 470, 42), 'Auras tab'),
+    ((112, 16, 198, 42), 'Clear tab'),
+    ((202, 16, 288, 42), 'Blocks tab'),
+    ((292, 16, 378, 42), 'Auras tab'),
+    ((382, 16, 468, 42), 'Drops tab'),
     ((18, 316, 164, 344), 'RGB / Rainbow'),
     ((310, 316, 462, 344), 'Save Profile'),
 ]:
     _button('cosmetics', box, label)
-for tab, names in enumerate([EFFECT_NAMES, SKIN_NAMES, AURA_NAMES], 1):
+for tab, names in enumerate([EFFECT_NAMES, SKIN_NAMES, AURA_NAMES, DROP_NAMES], 1):
     for index, name in enumerate(names):
         x, y = 12 + 94 * (index % 5), 100 + 100 * (index // 5)
         _button('cosmetics', (x, y, x + 82, y + 82), name, tab)
@@ -95,5 +97,5 @@ def button_glow(box):
     return svg(body)
 
 
-assert len(BUTTONS) == 94
+assert len(BUTTONS) == 101
 assert len({(screen, tab, label) for screen, tab, _, label in BUTTONS}) == len(BUTTONS)
