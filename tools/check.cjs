@@ -32,13 +32,18 @@ const fs=require('fs');
   return segments;
  }
  function captureStamps(draw){
-  const stamps=[],stamp=rt._primitives.pen_stamp;
+  const stamps=[],stamp=rt._primitives.pen_stamp,setSize=rt._primitives.looks_setsizeto;
+  let requestedSize=t.size;
+  rt._primitives.looks_setsizeto=(args,util)=>{
+   if(util.target===t)requestedSize=Number(args.SIZE);
+   return setSize(args,util);
+  };
   rt._primitives.pen_stamp=(args,util)=>{
    const target=util.target;
-   stamps.push({name:target.getCostumes()[target.currentCostume].name,x:target.x,y:target.y,size:target.size});
+   stamps.push({name:target.getCostumes()[target.currentCostume].name,x:target.x,y:target.y,size:target.size,requestedSize});
    return stamp(args,util);
   };
-  try{draw()}finally{rt._primitives.pen_stamp=stamp}
+  try{draw()}finally{rt._primitives.pen_stamp=stamp;rt._primitives.looks_setsizeto=setSize}
   return stamps;
  }
  run('reset');
@@ -96,7 +101,7 @@ const fs=require('fs');
   get('board').fill(0);for(let c=0;c<10;c++)if(c!==4&&c!==5)get('board')[190+c]=1;
   set('piece',4);set('x',3);set('y',18);set('rotation',0);set('last rotation',0);run('lock');
  }
- run('reset');singleClear();
+ set('DIFFICULTY',5);run('reset');singleClear();
  assert(Number(get('COMBO'))===1&&Number(get('combo bonus'))===0&&Number(get('SCORE'))===100,'first clear starts combo at one without an extra bonus');
  assert(Number(get('combo expires'))===14,'combo window expires four seconds after the latest clear');
  assert(Number(get('shake ticks'))===10,'line clear starts a short camera shake');
@@ -154,6 +159,32 @@ const fs=require('fs');
  assert(get('SCREEN')==='menu','a game-over run cannot be resumed from the main menu');
  set('has game',0);set('GAME OVER',0);run('resume game');
  assert(get('SCREEN')==='menu','resume cannot start a nonexistent run');
+ // Each run snapshots its own difficulty-dependent window. Menu preferences
+ // cannot change a live chain, and Bee effects share the exact same deadline.
+ const comboWindows=[12,10,7,5,4];
+ assert(JSON.stringify(get('combo choices').map(Number))===JSON.stringify(comboWindows),'all five difficulties define progressively shorter combo windows');
+ for(let mode=1;mode<=5;mode++){
+  const window=comboWindows[mode-1];set('DIFFICULTY',mode);set('THEME',11);testTime=1000+mode*100;run('start game');singleClear();
+  assert(Number(get('combo window'))===window&&Number(get('combo expires'))===testTime+window,'difficulty '+mode+' starts a '+window+'-second combo window');
+  testTime+=window/2;
+  const timerSegments=capturePen(()=>run('draw combo timer'));
+  assert(timerSegments.some(s=>near(s.from[0],-110)&&near(s.to[0],0)&&near(s.from[1],145)&&near(s.to[1],145)&&near(s.diameter,6)),'difficulty '+mode+' renders a half-length timer halfway through its own window');
+  singleClear();
+  assert(Number(get('COMBO'))===2&&total(get('combo buff stacks'))===5&&Number(get('combo expires'))===testTime+window,'difficulty '+mode+' refreshes its full window and retains five chained Bee effects');
+  set('DIFFICULTY',mode===5?1:5);testTime+=.25;singleClear();
+  assert(Number(get('combo window'))===window&&Number(get('run difficulty'))===mode&&Number(get('combo expires'))===testTime+window,'changing a menu preference cannot shorten or lengthen difficulty '+mode+' in progress');
+  const held=JSON.stringify(get('combo buff stacks'));testTime+=1;run('open menu');const beforePauseDeadline=Number(get('combo expires'));testTime+=30;run('resume game');
+  assert(Number(get('combo expires'))===beforePauseDeadline+30&&JSON.stringify(get('combo buff stacks'))===held,'difficulty '+mode+' pauses its timer and stacked effects together');
+  testTime=Number(get('combo expires'));run('update combo');
+  assert(Number(get('COMBO'))===3&&JSON.stringify(get('combo buff stacks'))===held,'difficulty '+mode+' keeps the chain and all effects at the exact deadline');
+  testTime+=.001;run('update combo');
+  assert(Number(get('COMBO'))===0&&total(get('combo buff stacks'))===0,'difficulty '+mode+' removes its combo and held effects together immediately after expiry');
+ }
+ for(const [mode,stillActive] of [[1,true],[5,false]]){
+  set('DIFFICULTY',mode);set('THEME',11);testTime=2000;run('start game');singleClear();testTime=2001;singleClear();testTime=2005.001;run('update combo');
+  assert((Number(get('COMBO'))===2)===stillActive&&(total(get('combo buff stacks'))===5)===stillActive,stillActive?'Easy preserves the chain and Bee effects beyond the former four-second limit':'Nightmare retains the original four-second chain and Bee-effects cutoff');
+ }
+ set('DIFFICULTY',5);set('THEME',5);run('reset');
  clock.projectTimer=originalTimer;
  // Theme cycling changes the artwork, never the logical board or score.
  const stage=rt.targets.find(target=>target.isStage),costumes=t.getCostumes();
@@ -200,7 +231,7 @@ const fs=require('fs');
  set('finish reason','Ended');run('finish run');const finishedRows=JSON.stringify(historyLists.map(name=>get(name)));
  run('finish run');assert(Number(get('run record open'))===0&&JSON.stringify(historyLists.map(name=>get(name)))===finishedRows,'finishing an already archived run is idempotent');
  run('reset');assert(Number(get('BEST SCORE'))===2400&&JSON.stringify(historyLists.map(name=>get(name)))===finishedRows,'resetting board state never clears saved history or best score');
- // Maximum combo survives the four-second chain ending, then starts fresh per run.
+ // Maximum combo survives its timed chain ending, then starts fresh per run.
  run('start game');set('COMBO',6);set('combo expires',999999);run('clear combo');run('checkpoint run');
  assert(Number(get('run max combo'))===7&&Number(get('run combos')[0])===7,'new combo milestones update the current run peak and its saved checkpoint');
  set('combo expires',-1);run('update combo');run('checkpoint run');
@@ -447,6 +478,15 @@ const fs=require('fs');
  assert(total(get('buff stacks'))===0&&total(get('buff life'))===0&&total(get('combo buff stacks'))===0,'new runs clear both timed and held cosmetic effects');
  set('THEME',1);set('COMBO',2);run('grant combo buffs');
  assert(total(get('combo buff stacks'))===0,'other themes cannot receive Bee Swarm combo bundles');
+ set('THEME',11);set('COMBO',2);set('combo expires',99999);
+ const multiplier=costumes.find(c=>c.name==='buff multiplier');
+ assert(Boolean(multiplier)&&Buffer.from(multiplier.asset.data).toString('utf8').includes('×'),'Bee badges include a readable multiplication symbol');
+ for(const count of [1,5,12]){
+  run('reset bee buffs');set('buff stacks',[count,...Array(11).fill(0)]);set('buff life',[240,...Array(11).fill(0)]);
+  const badges=captureStamps(()=>run('draw bee buffs'));
+  const digits=badges.filter(stamp=>/^digit\d$/.test(stamp.name)).map(stamp=>stamp.name.slice(5)).join('');
+  assert(badges.filter(stamp=>stamp.name==='buff multiplier').length===1&&digits===String(count),'Bee badge displays ×'+count+' with no leading zero');
+ }
  clock.projectTimer=originalTimer;
 
  set('THEME',12);set('CLEAR EFFECT',5);run('reset');singleClear();
@@ -471,16 +511,44 @@ const fs=require('fs');
  // The default trail follows the dropped piece, rather than unrelated dashes
  // covering the board. Check every tetromino orientation against its cells.
  set('THEME',1);set('DROP EFFECT',1);
+ const bandMetrics=new Map(costumes.filter(c=>/^drop band[1-6]-[1-4]$/.test(c.name)).map(c=>{
+  const svg=Buffer.from(c.asset.data).toString('utf8');
+  return [c.name,{width:Number(svg.match(/<svg\b[^>]*\bwidth="([\d.]+)"/)[1]),height:Number(svg.match(/<svg\b[^>]*\bheight="([\d.]+)"/)[1]),cx:c.rotationCenterX,cy:c.rotationCenterY}];
+ }));
+ assert(bandMetrics.size===24&&[...bandMetrics].every(([name,m])=>m.width===Number(name.split('-')[1])*16&&m.height===16&&m.cx===m.width/2&&m.cy===8),'all six trail styles include exact flat bands for one through four occupied columns');
+ function ribbonEnvelope(stamps){
+  const bands=stamps.filter(s=>bandMetrics.has(s.name));
+  return {bands,left:Math.min(...bands.map(s=>s.x-bandMetrics.get(s.name).cx*s.requestedSize/100)),right:Math.max(...bands.map(s=>s.x+(bandMetrics.get(s.name).width-bandMetrics.get(s.name).cx)*s.requestedSize/100)),top:Math.max(...bands.map(s=>s.y+bandMetrics.get(s.name).cy*s.requestedSize/100)),bottom:Math.min(...bands.map(s=>s.y-(bandMetrics.get(s.name).height-bandMetrics.get(s.name).cy)*s.requestedSize/100))};
+ }
  for(let piece=1;piece<=7;piece++)for(let rotation=0;rotation<4;rotation++){
   run('reset');set('piece',piece);set('rotation',rotation);set('x',3);set('y',2);set('DROP EFFECT',1);
   const cells=[...String(get('shapes')[(piece-1)*4+rotation])].flatMap((cell,index)=>cell==='1'?[[index%4,Math.floor(index/4)]]:[]);
   const meanX=total(cells.map(c=>c[0]))/4,meanY=total(cells.map(c=>c[1]))/4,landing=19-Math.max(...cells.map(c=>c[1]));
   const expectedX=-72+(3+meanX)*16,expectedFrom=152-(2+meanY)*16,expectedTo=152-(landing+meanY)*16;
+  const expectedLeft=-80+(3+Math.min(...cells.map(c=>c[0])))*16,expectedRight=-64+(3+Math.max(...cells.map(c=>c[0])))*16,expectedCenter=(expectedLeft+expectedRight)/2;
   run('hard drop');set('shake x',0);set('shake y',0);
-  const segments=capturePen(()=>run('draw drop dash'));
-  const white=segments.find(s=>s.color.slice(0,3).every(c=>near(c,1))&&near(s.from[0],expectedX*.82)&&near(s.to[0],expectedX*.82)&&near(s.from[1],expectedFrom*.82)&&near(s.to[1],expectedTo*.82));
-  assert(near(get('drop x'),expectedX)&&near(get('drop from y'),expectedFrom)&&near(get('drop to y'),expectedTo)&&Boolean(white),'piece '+piece+' rotation '+rotation+' draws a straight white trail from its actual center to its landing');
+  let segments;const stamps=captureStamps(()=>{segments=capturePen(()=>run('draw drop dash'))}),body=ribbonEnvelope(stamps);
+  const white=segments.find(s=>s.color.slice(0,3).every(c=>near(c,1))&&near(s.from[0],expectedCenter*.82)&&near(s.to[0],expectedCenter*.82)&&near(s.from[1],expectedFrom*.82)&&near(s.to[1],expectedTo*.82));
+  assert(near(get('drop x'),expectedX)&&near(get('drop left'),expectedLeft)&&near(get('drop right'),expectedRight)&&near(get('drop center x'),expectedCenter)&&near(get('drop width'),expectedRight-expectedLeft)&&near(get('drop from y'),expectedFrom)&&near(get('drop to y'),expectedTo)&&body.bands.length>0&&near(body.left,expectedLeft*.82)&&near(body.right,expectedRight*.82)&&near(body.top,expectedFrom*.82)&&near(body.bottom,expectedTo*.82)&&Boolean(white),'piece '+piece+' rotation '+rotation+' draws a full-width white ribbon with flat ends at its actual start and landing');
  }
+ // Test both walls for every style and orientation. Flat SVG tiles provide the
+ // full width and exact vertical ends; narrow pen accents stay inside the strip.
+ for(let piece=1;piece<=7;piece++)for(let rotation=0;rotation<4;rotation++){
+  const cells=[...String(get('shapes')[(piece-1)*4+rotation])].flatMap((cell,index)=>cell==='1'?[[index%4,Math.floor(index/4)]]:[]);
+  const minCol=Math.min(...cells.map(c=>c[0])),maxCol=Math.max(...cells.map(c=>c[0]));
+  for(let style=1;style<=6;style++){
+   let bothWalls=true;
+   for(const startX of [-minCol,9-maxCol]){
+    run('reset');set('piece',piece);set('rotation',rotation);set('x',startX);set('y',2);set('DROP EFFECT',style);run('hard drop');set('shake x',0);set('shake y',0);
+    const left=(-80+(startX+minCol)*16)*.82,right=(-64+(startX+maxCol)*16)*.82,top=Number(get('drop from y'))*.82,bottom=Number(get('drop to y'))*.82;
+    let segments;const body=ribbonEnvelope(captureStamps(()=>{segments=capturePen(()=>run('draw drop dash'))}));
+    bothWalls&&=body.bands.length===Number(get('drop rows'))&&body.bands.every(s=>s.name===`drop band${style}-${maxCol-minCol+1}`&&near(s.requestedSize,82))&&near(body.left,left)&&near(body.right,right)&&near(body.top,top)&&near(body.bottom,bottom)&&segments.length>0&&segments.every(s=>near(s.from[0],s.to[0])&&Math.min(s.from[0],s.to[0])-s.diameter/2>=left-1e-6&&Math.max(s.from[0],s.to[0])+s.diameter/2<=right+1e-6)&&left>=-80*.82-1e-6&&right<=80*.82+1e-6;
+   }
+   assert(bothWalls,'drop style '+style+' matches piece '+piece+' rotation '+rotation+' with flat ribbon bounds at both board walls');
+  }
+ }
+ run('reset');set('piece',4);set('rotation',0);set('x',3);set('y',18);run('hard drop');
+ assert(Number(get('drop rows'))===0&&captureStamps(()=>run('draw drop dash')).every(s=>!bandMetrics.has(s.name)),'a piece already at its landing creates no overshooting ribbon body');
  run('reset');set('piece',4);set('rotation',0);set('x',3);set('y',2);get('board')[104]=1;run('hard drop');
  assert(near(get('drop from y'),112)&&near(get('drop to y'),16)&&Number(get('SCORE'))===12,'drop trails stop at an occupied landing surface and preserve hard-drop scoring');
  for(let style=1;style<=6;style++){

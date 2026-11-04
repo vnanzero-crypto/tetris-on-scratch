@@ -12,9 +12,9 @@ The older `stack-flow.sb3` link contains the same game. To update an older copy 
 
 **A/D or Left/Right** move · **S or Down** soft drop · **W or Up** rotate · **Z** rotates the other way · **Space** hard drops with a straight piece-to-landing trail · **C** holds · **R** opens the new-run picker.
 
-Press **M** or click **Menu** to pause and return to the main menu. **Resume** continues the same run immediately. **New Run** asks for a difficulty before restarting. The combo timer pauses in the menu.
+Press **M** or click **Menu** to pause and return to the main menu. **Resume** continues the same run immediately. **New Run** asks for a difficulty before restarting. Combo windows are **Easy 12 seconds, Normal 10, Hard 7, Expert 5, and Nightmare 4**. The window stays fixed for the run and pauses in the menu.
 
-**Cosmetics** contains 10 clear effects, nine block styles, seven auras plus None, and a **Drops** tab. Choose **White Line**, **Neon Pulse**, **Rainbow Beam**, **Flame Trail**, **Frost Stream**, or **Void Rift**. All six drop styles are available immediately; Neon Pulse uses your game-accent RGB color. Press **U** to unlock every cosmetic and all 50 achievements immediately; it leaves scores and progress counts unchanged. Open **Achievements** to see the requirements and rewards.
+**Cosmetics** contains 10 clear effects, nine block styles, seven auras plus None, and a **Drops** tab. Choose **White Line**, **Neon Pulse**, **Rainbow Beam**, **Flame Trail**, **Frost Stream**, or **Void Rift**. All six trails match the placed piece's rotated width and run to its actual landing. The styles are available immediately; Neon Pulse uses your game-accent RGB color. Press **U** to unlock every cosmetic and all 50 achievements immediately; it leaves scores and progress counts unchanged. Open **Achievements** to see the requirements and rewards.
 
 **RGB / Rainbow** in Cosmetics opens independent game-accent and key-highlight colors. Use the sliders, type exact RGB channel values, or choose animated Rainbow for either. **Settings** includes your name, shake intensity/Off, and preferred difficulty.
 
@@ -22,7 +22,7 @@ All clickable controls light up on hover. Theme hover outlines match the four-co
 
 **Themes** has twelve unique looks. Choose a card, use **1–9 / 0 / B / I**, or press **T** to cycle inside the gallery.
 
-- **Beeswarm Sim Theme (B):** Each line adds a bee, up to ten, roaming outside the board. There are 12 cosmetic buff types. The first clear grants one timed buff; each chained clear at **COMBO 2+ gives five different random buffs**. Further rolls stack, with multiple animated effects active at once until the combo ends. Badges stack at the top left and show their names on hover. The menu pauses both the combo and timed buffs.
+- **Beeswarm Sim Theme (B):** Each line adds a bee, up to ten, roaming outside the board. There are 12 cosmetic buff types. The first clear grants one timed buff; each chained clear at **COMBO 2+ gives five different random buffs**. Further rolls stack, with multiple animated effects active until the same difficulty-based combo window ends. Badges at the top left show **×1, ×5, ×12**, and other multiplier counts; hover to read their names. The menu pauses both the combo and timed buffs.
 - **Binding of Isaac (I):** Each line adds a familiar, up to ten, roaming outside gameplay. Clears trigger a red-and-white brimstone beam with blue, blood, spectral, and golden tear arcs and splash rings.
 
 The bees, familiars, buffs, and trails are visual effects. They leave scores, movement, gravity, and collisions unchanged. Starting a new run resets companions and buff stacks.

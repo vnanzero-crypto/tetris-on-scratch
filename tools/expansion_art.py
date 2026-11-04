@@ -290,5 +290,6 @@ def difficulty_panel():
         for step in range(5):
             b += rect(52 + step * 7, y + 22 - step * 2.5, 4, 5 + step * 2.5, color if step <= i else '#2d3a53', r=.6)
         b += text(101, y + 22, name, 12, color, 300, 'letter-spacing="1.8"')
+        b += text(405, y + 21, f'{[12, 10, 7, 5, 4][i]} SEC COMBO', 7.5, '#9baecb', 300, 'text-anchor="end" letter-spacing=".7"')
         b += _path(f'M{425} {y + 12}L{430} {y + 17}L{425} {y + 22}', stroke=color, width=1.2)
     return svg(b)

@@ -35,16 +35,16 @@ def _star(x, y, radius, color, opacity=1):
 
 
 def drop_preview(style=1):
-    """60×48 card preview, centered at (30,24), with a vertical drop line."""
+    """60×48 preview with a trail spanning the miniature's occupied width."""
     style = _kind(style, 6)
     colors = ['#effaff', '#78e5ff', '#b6bdff', '#ffc16b', '#b6eaff', '#bc9aff']
     color = colors[style-1]
     b = _ellipse(30, 41, 12, 2, '#8db6cf', extra='opacity=".1"')
     if style == 3:
         for i, c in enumerate(SPECTRUM):
-            x = 27.5+i
-            b += _path(f'M{x} 14V39', stroke=c, width=.9, extra='opacity=".8"')
+            b += rect(22+i*16/6,14,16/6,25,c,extra='fill-opacity=".5"')
     else:
+        b += rect(22,14,16,25,color,extra='fill-opacity=".16"')
         b += _path('M30 14V39', stroke=color, width=5 if style in (4,6) else 3.5, extra='opacity=".16"')
         b += _path('M30 14V39', stroke=color, width=1.6 if style in (4,6) else 1.1, extra='opacity=".95"')
         b += _path('M30 15V39', stroke='#fff', width=.45, extra='opacity=".9"')
@@ -64,7 +64,7 @@ def drop_preview(style=1):
     else:
         b += _ellipse(30, 39, 7, 2, stroke=color, width=.7, extra='opacity=".8"')
     # The solid miniature starts above the line; the outline is its landing spot.
-    for x,y in [(24,3),(29.5,3),(35,3),(29.5,8.5)]:
+    for x,y in [(22,3),(27.5,3),(33,3),(27.5,8.5)]:
         b += rect(x, y, 5, 5, color, '#f4fbff', .6, extra='stroke-width=".35" fill-opacity=".84"')
         b += rect(x, y+29, 5, 5, 'none', color, .6, extra='stroke-width=".5" stroke-opacity=".6"')
     return svg(b, 60, 48)
@@ -107,6 +107,28 @@ def drop_tip(style=1, frame=0):
         b += _path(f'M{12-radius} 9Q12 {5-f*.2} {12+radius} 9M{12-radius} 15Q12 {19+f*.2} {12+radius} 15', stroke='#d2b9ff', width=.7, extra=f'opacity="{fade:.3f}"')
         b += _path('M11 6L13 10L11 14L13 18', stroke='#f2e6ff', width=.85, extra=f'opacity="{fade:.3f}"')
     return svg(b, 24, 24)
+
+
+def drop_band(style=1, cells=1):
+    """One seamless 16-pixel-high ribbon tile with flat, exact piece edges."""
+    style = _kind(style, 6)
+    w = _kind(cells, 4) * 16
+    if style == 3:
+        b = ''.join(rect(i*w/6,0,w/6,16,c,extra='fill-opacity=".5"')
+                    for i,c in enumerate(SPECTRUM))
+    else:
+        c = ['#ffffff','#8ceaff','#ffffff','#ff5a2d','#90e4ff','#5e3678'][style-1]
+        b = rect(0,0,w,16,c,extra='fill-opacity=".14"')
+        if style == 2:
+            b += rect(w*.2,0,w*.6,16,'#92dcff',extra='fill-opacity=".08"')
+        elif style == 4:
+            b += rect(w*.175,0,w*.65,16,'#ffb24e',extra='fill-opacity=".25"')
+        elif style == 5:
+            for x in [w*.05,w*.91]:
+                b += rect(x,0,w*.04,16,'#bcf5ff',extra='fill-opacity=".45"')
+        elif style == 6:
+            b += rect(w*.225,0,w*.55,16,'#c6a1f1',extra='fill-opacity=".18"')
+    return svg(b,w,16)
 
 
 def tear(kind=1, frame=0):

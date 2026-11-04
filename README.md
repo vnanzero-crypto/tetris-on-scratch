@@ -37,13 +37,13 @@ All **101 clickable controls** light up on hover, including menu buttons, cosmet
 
 Choose a difficulty whenever you start a new run. Settings also holds your preferred difficulty. Changing that preference leaves an existing run’s timing intact; history records the actual mode used.
 
-| Difficulty | Gravity interval at level 1 | Lock delay |
-| --- | --- | --- |
-| Easy | 60 update ticks | 35 ticks |
-| Normal | 35 update ticks | 25 ticks |
-| Hard | 15 update ticks | 12 ticks |
-| Expert | 8 update ticks | 8 ticks |
-| Nightmare | 3 update ticks | 5 ticks |
+| Difficulty | Gravity interval at level 1 | Lock delay | Combo window |
+| --- | --- | --- | --- |
+| Easy | 60 update ticks | 35 ticks | 12 seconds |
+| Normal | 35 update ticks | 25 ticks | 10 seconds |
+| Hard | 15 update ticks | 12 ticks | 7 seconds |
+| Expert | 8 update ticks | 8 ticks | 5 seconds |
+| Nightmare | 3 update ticks | 5 ticks | 4 seconds |
 
 Gravity accelerates with level. All five modes use the same scoring rules.
 
@@ -64,7 +64,7 @@ Normal, Fire, Water, Ice, and Rainbow clears are available immediately. The five
 
 Rainbow clears have a **160 × 32** logical-pixel spectrum spanning all ten board columns, with larger prism sparks. Every clear style follows the actual cleared rows and fades after 24 rendered frames.
 
-Pressing **Space** during play draws a straight trail from the active piece's center to its actual landing center. **White Line** is the default; the **Drops** tab adds five alternatives, all available immediately. **Neon Pulse** uses your game-accent RGB color, including Rainbow mode. Trails stay behind the pieces, add a small landing flare, and fade after 20 rendered frames. The Binding of Isaac theme supplies its own brimstone clear animation while retaining your equipped clear cosmetic for other themes.
+Pressing **Space** during play draws a straight trail from the active piece to its actual landing. All six styles span the piece's occupied column width, from one to four cells, and follow its current rotation. **White Line** is the default; the **Drops** tab adds five alternatives, all available immediately. **Neon Pulse** uses your game-accent RGB color, including Rainbow mode. Trails stay behind the pieces, add a small landing flare, and fade after 20 rendered frames. The Binding of Isaac theme supplies its own brimstone clear animation while retaining your equipped clear cosmetic for other themes.
 
 ![Selectable drop styles](docs/drop-cosmetics.png)
 
@@ -94,9 +94,9 @@ Press **U** to unlock all 50 achievements, every cosmetic, and the title immedia
 
 ## Combos and camera
 
-Clear again within **four seconds** to increase COMBO. The first clear starts at 1; each clear refreshes the timer. Non-clearing placements do not break the chain while time remains. After four seconds without a clear, the counter resets.
+Clear again within your difficulty's combo window to increase COMBO: **Easy 12 seconds, Normal 10, Hard 7, Expert 5, or Nightmare 4**. Nightmare retains the original short window. The first clear starts at 1; each clear refreshes the timer. Non-clearing placements do not break the chain while time remains. When the window expires, the counter resets. The chosen window stays fixed for the run even if you change the preferred difficulty in Settings.
 
-The count, milestone name, and clear captions appear in the left sidebar. A larger **220-pixel countdown bar above the board** shows the remaining combo window without covering the cells. The milestone briefly pops for 24 rendered frames. Names stop changing after 15, while the numerical combo and bonuses can keep growing.
+The count, milestone name, and clear captions appear in the left sidebar. A **220-pixel countdown bar above the board** shows the remaining fraction of the chosen window without covering the cells. The menu pauses the countdown; Resume preserves its remaining time. The milestone briefly pops for 24 rendered frames. Names stop changing after 15, while the numerical combo and bonuses can keep growing.
 
 | Combo | Name | Combo | Name | Combo | Name |
 | --- | --- | --- | --- | --- | --- |
@@ -137,7 +137,7 @@ Open **Themes** and select a card in the four-column, three-row gallery. Use **1
 
 There are **12 cosmetic buffs**: Bomb Honey, Flower Honey, Bubble Pollen, Blue Haste, Red Boost, Blue Boost, White Boost, Focus, Melody, Inspire, Rage, and Baby Love. The first clear of a chain grants one random timed buff, lasting 240 rendered frames with a fade during its final 60 frames.
 
-Each chained clear at **COMBO 2 or higher grants five different random buffs**. Later bundles can add stacks to the same types. These combo stacks stay active until the combo expires, a new run starts, or the run ends. Their matching wisps, rings, pollen, sparks, bubbles, notes, and hearts animate together outside the board. Bright badges stack down the top-left gutter; hover to read a name. Counts combine timed and combo stacks, displaying up to 99. A first-clear timed buff can remain for its original lifetime after the combo ends. The menu pauses the combo and timed-buff decay. All buffs are cosmetic and leave scoring, gravity, movement, and collisions intact.
+Each chained clear at **COMBO 2 or higher grants five different random buffs**. Later bundles can add stacks to the same types. These combo stacks use the same difficulty-based deadline as COMBO, so easier modes give more time to build and retain effects. They remain active until the combo expires, a new run starts, or the run ends. Their matching wisps, rings, pollen, sparks, bubbles, notes, and hearts animate together outside the board. Bright badges stack down the top-left gutter; hover to read a name. Both timed and combo badges show multiplier counts such as **×1, ×5, or ×12**, combining stacks up to 99. A first-clear timed buff can remain for its original lifetime after the combo ends. The menu pauses the combo and timed-buff decay. The flying bee count still follows lines cleared in the run, up to ten. All buffs are cosmetic and leave scoring, gravity, movement, and collisions intact.
 
 ![Roaming bees and cosmetic buff stacks](docs/beeswarm-gameplay.png)
 
@@ -188,6 +188,6 @@ npm install --prefix /tmp/tetris-check scratch-vm@5.0.300 scratch-storage@4.1.27
 NODE_PATH=/tmp/tetris-check/node_modules node tools/check.cjs
 ```
 
-All **540 native Scratch VM checks** passed, including exact drop endpoints for all 28 piece orientations, six drop styles, five distinct buffs per combo clear, simultaneous effects and expiry, tear physics, all 101 hover controls, and old/new saved-profile restoration. The suite also covers movement and scoring, combos, pause/resume, themes, difficulty, achievements, companion flight, and run history. Headless checks omit a renderer and can emit costume-renderer warnings.
+All **752 native Scratch VM checks** passed, including full-width ribbons and flat endpoints for all six styles and 28 piece orientations at both walls, all five combo windows and held-effect deadlines, and ×1/×5/×12 badges without zero padding. The suite also covers scoring, pause/resume, cosmetic stacking, tears, all 101 hover controls, themes, achievements, flight bounds, history, and saved profiles. Headless checks omit a renderer and can emit costume-renderer warnings.
 
-Chromium verified all six drop selections, the white trail's rendered endpoints, five simultaneous random combo effects and stacking, paused effects and combo expiry, all four tear types with splash rings, all 101 hover controls, and the saved drop choice after actual `.sb3` export/reload. Earlier checks also covered the difficulty picker and instant Resume, every cosmetic choice, all achievement pages, U without fake scores, rainbow colors, roaming companions, and Stop/green-flag persistence. Screenshots use scripted board and score fixtures.
+Chromium verified the actual full-width ribbons and flat endpoints for all six drop styles, rotated-piece width changes, all five difficulty windows, Easy effects surviving beyond four seconds, Nightmare effects expiring after four seconds, multiplier badges, and paused effects. Earlier browser checks also covered five simultaneous random effects and stacking, tear arcs and splashes, all 101 hover controls, saved-profile export/reload, the difficulty picker and instant Resume, cosmetic choices, achievements, U without fake scores, RGB colors, and roaming companions. Screenshots use scripted board and score fixtures.

@@ -109,7 +109,7 @@ color_entry=[]
 for i,name in enumerate(color_fields,1):color_entry += [If(eq(V('color channel'),i),[setv(name,(B('sensing_answer'),)),setv(name.split()[0]+' custom',1)])]
 proc('edit color value',[B('sensing_askandwait',{'QUESTION':inp('RGB value: enter a number from 0 to 255')})]+color_entry+[call('clamp settings'),setv('profile saved',0),call('sync inputs')])
 proc('edit name',[B('sensing_askandwait',{'QUESTION':inp('Name: up to 12 letters, numbers, spaces, - or _')}),setv('name draft',(B('sensing_answer'),)),call('sanitize name'),setv('settings notice','name'),setv('notice until',add(timer(),2)),call('sync inputs')])
-proc('apply difficulty',[setv('gravity base',item('gravity choices',V('DIFFICULTY'))),setv('lock limit',item('lock choices',V('DIFFICULTY'))),setv('run difficulty',V('DIFFICULTY'))])
+proc('apply difficulty',[setv('gravity base',item('gravity choices',V('DIFFICULTY'))),setv('lock limit',item('lock choices',V('DIFFICULTY'))),setv('combo window',item('combo choices',V('DIFFICULTY'))),setv('run difficulty',V('DIFFICULTY'))])
 # Fifty actual progress thresholds, with permanent rewards and local developer unlock.
 ach=[If(gt(V('run max combo'),V('best combo')),[setv('best combo',V('run max combo'))])]
 for i,(_,metric,threshold,_) in enumerate(CATALOG,1):
@@ -123,10 +123,10 @@ for prefix in ['game','key']:
 proc('update rainbow',rainbow_updates)
 proc('draw raw text',[resize({'SIZE':inp(V('text scale'))}),setv('text index',1),repeat(R('operator_length',STRING=V('text value')),[setv('text char',R('operator_letter_of',LETTER=V('text index'),STRING=V('text value'))),
  setv('text glyph',(B('data_itemnumoflist',{'ITEM':inp(V('text char'))},{'LIST':['name alphabet',lst('name alphabet')]}),)),If(gt(V('text glyph'),0),raw_stamp(V('text x'),V('text y'),join('letter',V('text glyph')))),change('text x',mul(V('text scale'),.12)),change('text index',1)])])
-# Four-second rolling combo window uses Scratch's real clock, not frame counts.
+# The run's difficulty sets the real-clock combo and held-effect window.
 proc('update combo',[If(both(gt(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',0),setv('combo expires',0),setv('combo animating',0),call('clear combo buffs')])])
 proc('clear combo',[If(either(eq(V('COMBO'),0),gt(timer(),V('combo expires'))),[setv('COMBO',1),call('clear combo buffs')],[change('COMBO',1)]),
- setv('combo pulse',0),setv('combo animating',1),If(gt(V('COMBO'),V('run max combo')),[setv('run max combo',V('COMBO'))]),If(gt(V('COMBO'),V('best combo')),[setv('best combo',V('COMBO'))]),setv('combo expires',add(timer(),4)),setv('combo bonus',mul(mul(sub(V('COMBO'),1),50),V('LEVEL')))])
+ setv('combo pulse',0),setv('combo animating',1),If(gt(V('COMBO'),V('run max combo')),[setv('run max combo',V('COMBO'))]),If(gt(V('COMBO'),V('best combo')),[setv('best combo',V('COMBO'))]),setv('combo expires',add(timer(),V('combo window'))),setv('combo bonus',mul(mul(sub(V('COMBO'),1),50),V('LEVEL')))])
 proc('update camera',[setv('shake x',0),setv('shake y',0),If(gt(V('shake ticks'),0),[
  setv('shake amount',mul(mul(div(V('shake ticks'),10),div(V('SHAKE'),100)),8)),
  If(eq(mod(V('shake ticks'),2),0),[setv('shake x',V('shake amount'))],[setv('shake x',sub(0,V('shake amount')))]),
@@ -250,10 +250,10 @@ proc('reset',[call('init profile'),call('apply difficulty'),If(either(lt(V('THEM
  setv('z previous',0),setv('w previous',0),setv('space previous',0),setv('c previous',0),call('spawn')])
 def edge(k,prev,ss):return [If(both(held(k),eq(V(prev),0)),ss),setv(prev,held(k))]
 def sideways(k,t,dx):return If(held(k),[change(t,1),If(either(eq(V(t),1),both(gt(V(t),9),eq(mod(V(t),2),0))),[setv('dx',dx),setv('dy',0),call('move')])],[setv(t,0)])
-proc('capture drop start',[setv('drop style',V('DROP EFFECT')),setv('drop start row',V('y')),setv('drop local x',0),setv('drop local y',0),setv('shape',shape(V('piece'),V('rotation'))),setv('i',0),repeat(16,[
- If(eq(cell(),1),[change('drop local x',mod(V('i'),4)),change('drop local y',floor(div(V('i'),4)))]),change('i',1)]),
- setv('drop x',add(-72,mul(add(V('x'),div(V('drop local x'),4)),16))),setv('drop from y',sub(152,mul(add(V('y'),div(V('drop local y'),4)),16))),setv('drop to y',V('drop from y'))])
-proc('hard drop',[call('capture drop start'),setv('dash active',1),setv('dash age',0),change('lifetime drops',1),setv('valid',1),until(eq(V('valid'),0),[setv('dx',0),setv('dy',1),call('move'),If(eq(V('valid'),1),[change('SCORE',2)])]),setv('drop to y',sub(V('drop from y'),mul(sub(V('y'),V('drop start row')),16))),call('lock')])
+proc('capture drop start',[setv('drop style',V('DROP EFFECT')),setv('drop start row',V('y')),setv('drop local x',0),setv('drop local y',0),setv('drop min col',4),setv('drop max col',-1),setv('shape',shape(V('piece'),V('rotation'))),setv('i',0),repeat(16,[
+ If(eq(cell(),1),[change('drop local x',mod(V('i'),4)),change('drop local y',floor(div(V('i'),4))),If(lt(mod(V('i'),4),V('drop min col')),[setv('drop min col',mod(V('i'),4))]),If(gt(mod(V('i'),4),V('drop max col')),[setv('drop max col',mod(V('i'),4))])]),change('i',1)]),
+ setv('drop x',add(-72,mul(add(V('x'),div(V('drop local x'),4)),16))),setv('drop left',add(-80,mul(add(V('x'),V('drop min col')),16))),setv('drop right',add(-64,mul(add(V('x'),V('drop max col')),16))),setv('drop width',sub(V('drop right'),V('drop left'))),setv('drop center x',div(add(V('drop left'),V('drop right')),2)),setv('drop from y',sub(152,mul(add(V('y'),div(V('drop local y'),4)),16))),setv('drop to y',V('drop from y'))])
+proc('hard drop',[call('capture drop start'),setv('dash active',1),setv('dash age',0),change('lifetime drops',1),setv('valid',1),until(eq(V('valid'),0),[setv('dx',0),setv('dy',1),call('move'),If(eq(V('valid'),1),[change('SCORE',2)])]),setv('drop rows',sub(V('y'),V('drop start row'))),setv('drop to y',sub(V('drop from y'),mul(V('drop rows'),16))),call('lock')])
 active=[sideways('a','left ticks',-1),sideways('d','right ticks',1)]
 active+=edge('w','w previous',[setv('turn',1),call('rotate')])+edge('z','z previous',[setv('turn',3),call('rotate')])+edge('c','c previous',[call('hold')])+edge('space','space previous',[call('hard drop')])
 active += [change('fall',1),If(either(both(held('s'),eq(mod(V('fall'),2),0)),gt(V('fall'),div(V('gravity base'),V('LEVEL')))),[
@@ -398,7 +398,7 @@ for tab,options,variable,requirements,offset in [(1,10,'CLEAR EFFECT',EFFECT_REQ
  cosm_clicks += [If(eq(V('cosmetics tab'),tab),click)]
 cosm_render += [If(gt(V('notice until'),timer()),[resize({'SIZE':inp(100)})]+raw_stamp(-220,-172,join('notice',V('settings notice'))))]
 proc('render cosmetics',cosm_render);proc('cosmetics click',cosm_clicks)
-proc('draw combo timer',[If(gt(V('COMBO'),0),segment(-110,145,110,145,0x28344a,7)+segment(-110,145,add(-110,mul(div(sub(V('combo expires'),timer()),4),220)),145,0xacecff,6)+[resize({'SIZE':inp(100)})]+raw_stamp(0,164,'combo timer caption'))])
+proc('draw combo timer',[If(gt(V('COMBO'),0),segment(-110,145,110,145,0x28344a,7)+segment(-110,145,add(-110,mul(div(sub(V('combo expires'),timer()),V('combo window')),220)),145,0xacecff,6)+[resize({'SIZE':inp(100)})]+raw_stamp(0,164,'combo timer caption'))])
 # Independent random walks use the outer stage and the corridors above/below
 # the well. The protected rectangle includes max shake and the full sprite size.
 COMPANION_FIELDS=['companion '+field for field in ['x','y','vx','vy','turn']]
@@ -445,7 +445,8 @@ buff_draw=[setv('buff y',sub(124,mul(V('buff slot'),24))),resize({'SIZE':inp(100
  If(both(eq(item('combo buff stacks',V('buff index')),0),lt(item('buff life',V('buff index')),60)),[effect('GHOST',mul(sub(60,item('buff life',V('buff index'))),1.5))]),
  If(gt(item('combo buff stacks',V('buff index')),0),raw_stamp(-220,V('buff y'),'combo buff badge'),raw_stamp(-220,V('buff y'),'buff badge')),
  resize({'SIZE':inp(70)})]+raw_stamp(-228,V('buff y'),join('buff icon',V('buff index')))+[
- setv('number value',V('buff total')),setv('number digits',2),setv('number scale',40),setv('number spacing',4.5),setv('number x',-218),setv('number y',sub(V('buff y'),3)),call('draw raw number'),B('looks_cleargraphiceffects'),
+ resize({'SIZE':inp(100)})]+raw_stamp(-217.5,sub(V('buff y'),1),'buff multiplier')+[
+ setv('number value',V('buff total')),setv('number digits',1),If(gt(V('buff total'),9),[setv('number digits',2)]),setv('number scale',40),setv('number spacing',4.5),setv('number x',-214),setv('number y',sub(V('buff y'),3)),call('draw raw number'),B('looks_cleargraphiceffects'),
  If(both(both(gt(mouse_x(),-237),lt(mouse_x(),-203)),both(gt(mouse_y(),sub(V('buff y'),11)),lt(mouse_y(),add(V('buff y'),11)))),[resize({'SIZE':inp(100)})]+raw_stamp(-150,139,join('buff label',V('buff index')))),change('buff slot',1)]
 buff_loop=[If(gt(item('buff life',V('buff index')),0),[
  replace('buff life',V('buff index'),sub(item('buff life',V('buff index')),1)),If(eq(item('buff life',V('buff index')),0),[replace('buff stacks',V('buff index'),0)])]),
@@ -456,20 +457,22 @@ wisp_loop=[setv('wisp x',mul(sub(mul(mod(add(V('wisp kind'),V('wisp index')),2),
 proc('draw combo wisps',[If(both(eq(V('THEME'),11),gt(V('COMBO'),1)),[ensure_buffs(),resize({'SIZE':inp(65)}),setv('wisp kind',1),repeat(12,[
  setv('wisp count',item('combo buff stacks',V('wisp kind'))),If(gt(V('wisp count'),4),[setv('wisp count',4)]),setv('wisp index',1),repeat(V('wisp count'),wisp_loop),change('wisp kind',1)]),resize({'SIZE':inp(100*ZOOM)})])])
 # A Space edge records the actual piece center and landing before lock/spawn.
-# Pen strokes use those two endpoints, with a small landing flare for each style.
+# Each ribbon spans the rotated piece's occupied columns; every layer stays
+# inside those edges. Its vertical endpoints still follow the actual drop.
 def trail_stroke(color,width,offset=0,base_alpha=0):
- return segment(add(V('drop x'),offset),V('drop from y'),add(V('drop x'),offset),V('drop to y'),color,width*ZOOM,True,add(base_alpha,mul(V('dash age'),(95-base_alpha)/20)))
+ return segment(add(V('drop center x'),mul(V('drop width'),offset)),V('drop from y'),add(V('drop center x'),mul(V('drop width'),offset)),V('drop to y'),color,mul(V('drop width'),width*ZOOM),True,add(base_alpha,mul(V('dash age'),(95-base_alpha)/20)))
 drop_styles={
- 1:trail_stroke(0xe1f7ff,5,base_alpha=78)+trail_stroke(0xffffff,1.8),
- 2:trail_stroke(packed('game'),7,base_alpha=65)+trail_stroke(packed('game'),3)+trail_stroke(0xffffff,.8),
- 3:sum([trail_stroke(c,.95,(i-2.5)*1.05) for i,c in enumerate([0xff5e91,0xffb767,0xffed95,0x85f4c2,0x81cfff,0xcc9bff])],[])+trail_stroke(0xffffff,.6),
- 4:trail_stroke(0xff4e2a,8,base_alpha=75)+trail_stroke(0xffaa42,3.7)+trail_stroke(0xfff1bf,1.2),
- 5:trail_stroke(0x85e4ff,6,base_alpha=70)+trail_stroke(0xe9ffff,1.4)+trail_stroke(0x9ddcff,.6,-2.8)+trail_stroke(0x9ddcff,.6,2.8),
- 6:trail_stroke(0x301442,7,base_alpha=35)+trail_stroke(0xcca3ff,3)+trail_stroke(0xf6e2ff,.9)}
+ 1:trail_stroke(0xffffff,.08),
+ 2:trail_stroke(packed('game'),.12)+trail_stroke(0xffffff,.04),
+ 3:trail_stroke(0xffffff,.04),
+ 4:trail_stroke(0xfff1bf,.12),
+ 5:trail_stroke(0xe9ffff,.1)+trail_stroke(0x9ddcff,.04,-.43)+trail_stroke(0x9ddcff,.04,.43),
+ 6:trail_stroke(0xf6e2ff,.06)}
 drop_draw=[]
 for style,strokes in drop_styles.items():drop_draw += [If(eq(V('drop style'),style),strokes)]
-proc('draw drop dash',[If(eq(V('dash active'),1),drop_draw+[resize({'SIZE':inp(100*ZOOM)}),effect('GHOST',mul(V('dash age'),4))]+stamp(V('drop x'),V('drop to y'),join(join('drop tip',V('drop style')),join('-',floor(div(mul(V('dash age'),6),20)))))+[
- B('looks_cleargraphiceffects'),change('dash age',1),If(gt(V('dash age'),19),[setv('dash active',0)])])])
+drop_tiles=stamp(V('drop center x'),sub(sub(V('drop from y'),8),mul(V('drop tile'),16)),join(join('drop band',V('drop style')),join('-',div(V('drop width'),16))))+[change('drop tile',1)]
+proc('draw drop dash',[If(eq(V('dash active'),1),[resize({'SIZE':inp(100*ZOOM)}),effect('GHOST',mul(V('dash age'),4)),setv('drop tile',0),repeat(V('drop rows'),drop_tiles),B('looks_cleargraphiceffects')]+drop_draw+[resize({'SIZE':inp(mul(div(V('drop width'),24),100*ZOOM))}),effect('GHOST',mul(V('dash age'),4))]+stamp(V('drop center x'),V('drop to y'),join(join('drop tip',V('drop style')),join('-',floor(div(mul(V('dash age'),6),20)))))+[
+ B('looks_cleargraphiceffects'),resize({'SIZE':inp(100*ZOOM)}),change('dash age',1),If(gt(V('dash age'),19),[setv('dash active',0)])])])
 TEAR_FIELDS=['tear '+field for field in ['x','y','vx','vy','kind']]
 proc('clear isaac tears',[clear(name) for name in TEAR_FIELDS])
 proc('start isaac tears',[call('clear isaac tears'),If(eq(V('fx style'),11),[setv('tear row',1),repeat(length('clear rows'),[
@@ -508,7 +511,7 @@ from effects_art import elemental_beam, particle_skin, cosmetic_block, aura
 from expansion_art import bee,bee_token,logo,menu_cosmetics,difficulty_panel,BEE_NAMES
 from cosmetics_art import card
 from scene_art import familiar,FAMILIAR_NAMES,brimstone_beam,brimstone_spark,buff_icon,buff_label,buff_wisp,BUFF_NAMES
-from impact_art import DROP_NAMES,drop_tip,tear,tear_splash
+from impact_art import DROP_NAMES,drop_tip,drop_band,tear,tear_splash
 costumes=[]
 for theme,palette in enumerate(THEME_PALETTES,1):
  costumes += [costume('t'+str(theme)+'-'+str(i+1),block(c,theme=theme),8,8) for i,c in enumerate(palette)]
@@ -563,7 +566,7 @@ for i,label in enumerate(['EASY','NORMAL','HARD','EXPERT','NIGHTMARE'],1):costum
 NAME_ALPHABET=list('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -_')
 for i,c in enumerate(NAME_ALPHABET,1):costumes += [costume('letter'+str(i),svg(text(0,16,c,17,'#ecf5ff',300),12,20),0,10)]
 lists['name alphabet']=['name alphabet',NAME_ALPHABET]
-lists['gravity choices']=['gravity choices',[60,35,15,8,3]];lists['lock choices']=['lock choices',[35,25,12,8,5]]
+lists['gravity choices']=['gravity choices',[60,35,15,8,3]];lists['lock choices']=['lock choices',[35,25,12,8,5]];lists['combo choices']=['combo choices',[12,10,7,5,4]]
 for tab,options in [(1,10),(2,9),(3,8),(4,6)]:
  costumes += [costume('cosmetics panel'+str(tab),menu_cosmetics(tab),240,180)]
  for option in range(1,options+1):
@@ -580,11 +583,13 @@ for i in range(1,11):
 for frame in range(10):
  costumes += [costume('element11-'+str(frame),brimstone_beam(frame),80,14)]
 costumes += [costume('element spark11',brimstone_spark(),6,6),costume('buff badge',svg(rect(.5,.5,33,21,'#0d1c24','#d7c56d',4,extra='stroke-width=".6"'),34,22),17,11),costume('combo buff badge',svg(rect(.5,.5,33,21,'#10262c','#9ef9df',4,extra='stroke-width=".9"')+rect(1,4,1,14,'#baffea',r=.5),34,22),17,11)]
+costumes += [costume('buff multiplier',svg(text(3,6.5,'×',7,'#dff8ec',300,extra='text-anchor="middle"'),6,8),3,4)]
 for i in range(1,13):
  costumes += [costume('buff icon'+str(i),buff_icon(i),10,10),costume('buff label'+str(i),buff_label(i),30,6)]
  for frame in range(4):costumes += [costume('buff wisp'+str(i)+'-'+str(frame),buff_wisp(i,frame),12,12)]
 for i in range(1,7):
  for frame in range(6):costumes += [costume('drop tip'+str(i)+'-'+str(frame),drop_tip(i,frame),12,12)]
+ for cells in range(1,5):costumes += [costume('drop band'+str(i)+'-'+str(cells),drop_band(i,cells),cells*8,8)]
 for i in range(1,5):
  for frame in range(4):costumes += [costume('isaac tear'+str(i)+'-'+str(frame),tear(i,frame),6,8)]
  for frame in range(6):costumes += [costume('tear splash'+str(i)+'-'+str(frame),tear_splash(i,frame),16,8)]
