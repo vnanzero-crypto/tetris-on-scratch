@@ -4,7 +4,7 @@
 2. Click **Download raw file** (the down-arrow button).
 3. Open https://scratch.mit.edu/projects/editor/ .
 4. Choose **File → Load from your computer** and select the downloaded `.sb3` file.
-5. Click the green flag, choose a theme in the main menu, and click **Play**.
+5. Click the green flag, open Themes to choose a theme, and click **Play**.
 
 ## Controls and menu
 
@@ -12,6 +12,10 @@
 
 Press **M** or click the top-left **Menu** button to return at any time. The menu pauses the run and combo countdown. **Resume** continues; **New Run** starts over. In the menu, **Space** plays/resumes and **N** starts a new run.
 
-Theme selection is in the main menu: click the buttons or press **1–5** for Galaxy, Mountains, Ocean, Sunset, or Neon City. **T** cycles themes. The new interface has slimmer typography, central animated combos, and a live input display.
+Open **Themes** from the main menu for ten unique looks: Galaxy, Mountains, Ocean, Sunset, Neon City, Black, Sakura, Volcano, Aurora, and Blueprint. The theme gallery supports **1–9 / 0** and T to cycle. On-screen control hints are hidden; the live input shows only the four arrows in a keyboard layout. Combos appear in the sidebar with names such as 3 NICE!, 5 GREAT!, and 7 CRAZY!, through 15 BEYOND LIMITS!.
+
+## Keep your scores
+
+Open **Run History** from the main menu to compare your newest 20 runs and personal best. Scores survive **Stop** and restarting with the green flag. **Save your own Scratch project or download the played `.sb3` before closing Scratch** to retain that history later. Loading a fresh download replaces the existing project's saved history.
 
 If you have the old version in Scratch, load the new `.sb3` file to replace it. Downloading a new file does not automatically update a previously saved Scratch project.
