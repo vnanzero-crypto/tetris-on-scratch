@@ -25,8 +25,10 @@ const fs=require('fs');
  const x=get('x');set('dx',-1);set('dy',0);run('move');assert(get('x')==x-1,'left input moves active piece');
  set('piece',2);set('rotation',0);set('y',0);set('x',0);set('dx',-1);run('move');assert(get('x')==0,'wall collision blocks movement');
  const p=get('piece');run('hold');assert(get('HOLD')==p&&get('can hold')==0,'hold swaps and prevents repeat hold');
+ const rotationsBefore=Number(get('lifetime rotations'));
  set('turn',1);run('rotate');assert(get('rotation')==1,'clockwise rotation');
  assert(get('SCORE')==5&&get('last rotation')==1,'successful rotation awards five points and records rotation');
+ assert(Number(get('lifetime rotations'))===rotationsBefore+1,'successful rotations advance lifetime achievement progress');
  set('piece',4);set('x',3);set('y',18);set('rotation',0);run('lock');
  assert(get('board').filter(x=>Number(x)!==0).length==4,'locking writes four cells');
  assert(get('can hold')==1,'locking re-enables hold');
@@ -35,8 +37,9 @@ const fs=require('fs');
  assert(get('LINES')==1&&get('SCORE')==100,'full row clears and scores');
  assert(get('board').length==200&&get('board').filter(x=>Number(x)!==0).length==2,'row clear preserves board and shifts remaining cells');
  // A completely blocked candidate must not award points or record a rotation.
- run('reset');set('piece',6);set('rotation',0);get('board').fill(1);set('turn',1);run('rotate');
+ run('reset');set('piece',6);set('rotation',0);get('board').fill(1);set('turn',1);const blockedRotations=Number(get('lifetime rotations'));run('rotate');
  assert(get('SCORE')==0&&get('rotation')==0&&get('last rotation')==0,'failed rotation awards no points');
+ assert(Number(get('lifetime rotations'))===blockedRotations,'blocked rotations do not fabricate achievement progress');
  // Vertical drops preserve the last rotation for a T-spin; lateral movement cancels it.
  run('reset');set('piece',6);set('x',3);set('y',4);set('turn',1);run('rotate');
  set('dx',0);set('dy',1);run('move');assert(get('last rotation')==1,'vertical drop preserves T-spin eligibility');
@@ -131,17 +134,17 @@ const fs=require('fs');
  clock.projectTimer=originalTimer;
  // Theme cycling changes the artwork, never the logical board or score.
  const stage=rt.targets.find(target=>target.isStage),costumes=t.getCostumes();
- assert(stage.getCostumes().length===10&&new Set(stage.getCostumes().map(c=>c.assetId)).size===10,'all ten background themes have distinct embedded artwork');
+ assert(stage.getCostumes().length===11&&new Set(stage.getCostumes().map(c=>c.assetId)).size===11,'all eleven background themes have distinct embedded artwork');
  const paletteIds=[];
- for(let theme=1;theme<=10;theme++){
+ for(let theme=1;theme<=11;theme++){
   const themed=costumes.filter(c=>c.name.startsWith(`t${theme}-`));
   assert(themed.length===14,`theme ${theme} includes all seven block colors and seven ghost skins`);
   paletteIds.push(costumes.find(c=>c.name===`t${theme}-1`).assetId);
  }
- assert(new Set(paletteIds).size===10,'the ten themes include distinct block palettes');
+ assert(new Set(paletteIds).size===11,'the eleven themes include distinct block palettes');
  set('THEME',1);set('SCORE',765);get('board')[199]=2;const themeBoard=JSON.stringify(get('board'));
- for(let step=0;step<10;step++){
-  run('next theme');const expected=((step+1)%10)+1;
+ for(let step=0;step<11;step++){
+  run('next theme');const expected=((step+1)%11)+1;
   assert(Number(get('THEME'))===expected&&stage.getCostumes()[stage.currentCostume].name===`theme${expected}`,`theme cycle selects background ${expected}`);
   assert(Number(get('SCORE'))===765&&JSON.stringify(get('board'))===themeBoard,'theme changes preserve the board and score');
  }
@@ -244,11 +247,11 @@ const fs=require('fs');
  hoverAt('menu',120,261,4,'Run History has a matching menu hover object');
  hoverAt('menu',12,130,0,'moving away from menu actions clears the hover object');
  hoverAt('menu',120,155,0,'the gap between menu actions has no stale hover object');
- for(let theme=0;theme<10;theme++){
-  hoverAt('themes',52+94*(theme%5),127+74*Math.floor(theme/5),11+theme,'theme '+(theme+1)+' has its own hover preview');
+ for(let theme=0;theme<11;theme++){
+  hoverAt('themes',65+116*(theme%4),117+70*Math.floor(theme/4),11+theme,'theme '+(theme+1)+' has its own hover preview');
  }
  hoverAt('themes',50,28,5,'theme gallery Back has a navigation hover object');
- hoverAt('themes',105,127,0,'theme card gaps clear the previous theme preview');
+ hoverAt('themes',123,117,0,'theme card gaps clear the previous theme preview');
  hoverAt('history',50,28,5,'history Back has a navigation hover object');
  hoverAt('history',146,302,6,'history Previous has a navigation hover object');
  hoverAt('history',334,302,7,'history Next has a navigation hover object');
@@ -257,6 +260,34 @@ const fs=require('fs');
  assert(presentationState()===beforePresentation,'hover detection and animated previews preserve the board, bag, score, combos and saved runs');
  set('SCREEN','menu');
 
+ // Choosing a difficulty and browsing cosmetics must leave a paused run intact.
+ const chooserState=presentationState();
+ run('choose difficulty');
+ assert(get('SCREEN')==='difficulty'&&presentationState()===chooserState,'Play opens the difficulty chooser without resetting a run or adding history');
+ run('show cosmetics');
+ assert(get('SCREEN')==='cosmetics'&&presentationState()===chooserState,'the dedicated Cosmetics menu preserves the current run and saved history');
+ const startsBefore=[get('lifetime runs'),get('expert starts'),get('nightmare starts')].map(Number);
+ for(const [difficulty,gravity,lock] of [[1,60,35],[2,35,25],[3,15,12],[4,8,8],[5,3,5]]){
+  set('DIFFICULTY',difficulty);run('start game');
+  assert(get('SCREEN')==='play'&&Number(get('gravity base'))===gravity&&Number(get('lock limit'))===lock&&Number(get('run difficulties')[0])===difficulty,'difficulty '+difficulty+' starts with its own timing and history label');
+ }
+ assert(Number(get('lifetime runs'))===startsBefore[0]+5&&Number(get('expert starts'))===startsBefore[1]+1&&Number(get('nightmare starts'))===startsBefore[2]+1,'confirmed runs advance lifetime and advanced-difficulty achievement progress');
+
+ // Bee Swarm companions stay at the stage edge and never alter game state.
+ const beeGuardNames=['board','bag','piece','x','y','rotation','SCORE','LINES','COMBO','run serial',...historyLists];
+ const beeState=()=>JSON.stringify(beeGuardNames.map(name=>get(name)));
+ set('THEME',11);
+ for(const lines of [0,1,5,10,40]){
+  set('LINES',lines);const before=beeState();run('draw bees');
+  assert(Number(get('bee count'))===Math.min(lines,10),'Bee Swarm shows '+Math.min(lines,10)+' companions after '+lines+' lines');
+  assert(beeState()===before,'bee animation preserves the board, score and history');
+  if(lines>0)assert(Number.isFinite(Number(get('bee x')))&&Math.abs(Number(get('bee x')))>=200,'bee companions fly beyond the gameplay area');
+ }
+ set('THEME',1);const otherThemeBeeState=beeState();run('draw bees');
+ assert(Number(get('bee count'))===0&&beeState()===otherThemeBeeState,'other themes hide bees without changing gameplay');
+ set('COMBO',5);set('combo expires',clock.projectTimer()+4);const timerState=beeState();run('draw combo timer');
+ assert(beeState()===timerState,'the large combo timer is presentation only');
+
  // Settings and progression are independent from per-run resets.
  run('init profile');
  set('SHAKE',0);set('shake ticks',10);run('update camera');assert(Number(get('shake x'))===0&&Number(get('shake y'))===0,'shake Off produces no camera offset');
@@ -264,33 +295,73 @@ const fs=require('fs');
  set('DIFFICULTY',1);run('apply difficulty');assert(Number(get('gravity base'))===60&&Number(get('lock limit'))===35,'Easy uses slower gravity and longer lock delay');
  set('DIFFICULTY',2);run('apply difficulty');assert(Number(get('gravity base'))===35&&Number(get('lock limit'))===25,'Normal preserves familiar timing');
  set('DIFFICULTY',3);run('apply difficulty');assert(Number(get('gravity base'))===15&&Number(get('lock limit'))===12,'Hard uses faster gravity and shorter lock delay');
- set('unlocked',Array(6).fill(0));set('BLOCK SKIN',4);set('AURA',2);run('validate cosmetics');assert(Number(get('BLOCK SKIN'))===1&&Number(get('AURA'))===0,'locked cosmetics cannot be equipped');
- set('lifetime lines',0);set('lifetime quads',0);set('lifetime spins',0);set('run max combo',0);set('BEST SCORE',0);run('check achievements');assert(get('unlocked').every(x=>Number(x)===0),'achievement menu does not grant rewards without progress');
+ set('unlocked',Array(50).fill(0));set('BLOCK SKIN',4);set('AURA',2);run('validate cosmetics');assert(Number(get('BLOCK SKIN'))===1&&Number(get('AURA'))===0,'locked cosmetics cannot be equipped');
+ const progressNames=['lifetime lines','lifetime quads','lifetime spins','run max combo','BEST SCORE','best combo','lifetime rotations','lifetime drops','lifetime runs','max bees','expert starts','nightmare starts','rainbow lines','beeswarm lines'];
+ for(const name of progressNames)set(name,0);
+ run('check achievements');
+ assert(get('unlocked').length===50&&get('unlocked').every(x=>Number(x)===0),'all fifty achievements start locked when there is no progress');
+ assert(get('achievement names').length===50&&new Set(get('achievement names').map(String)).size===50,'all fifty achievements have unique names');
  set('lifetime lines',1);run('check achievements');assert(Number(get('unlocked')[0])===1,'first line unlocks Ember blocks');
  set('lifetime lines',10);run('check achievements');assert(Number(get('unlocked')[1])===1,'ten lifetime lines unlock Frost blocks');
  set('run max combo',5);run('check achievements');assert(Number(get('unlocked')[2])===1,'five combo unlocks Prism blocks');
  set('lifetime quads',1);run('check achievements');assert(Number(get('unlocked')[3])===1,'a four-line clear unlocks Gold aura');
  set('lifetime spins',1);run('check achievements');assert(Number(get('unlocked')[4])===1,'a T-spin unlocks the Spin Artist title');
  set('BEST SCORE',5000);run('check achievements');assert(Number(get('unlocked')[5])===1,'five thousand points unlocks Rainbow aura');
- set('run max combo',0);set('lifetime lines',0);run('check achievements');assert(get('unlocked').every(x=>Number(x)===1),'earned achievements never relock');
+ set('run max combo',0);set('lifetime lines',0);run('check achievements');assert(get('unlocked').slice(0,6).every(x=>Number(x)===1)&&Number(get('best combo'))===5,'earned achievements and lifetime peak combo survive run resets');
  set('BLOCK SKIN',4);set('AURA',2);run('validate cosmetics');assert(Number(get('BLOCK SKIN'))===4&&Number(get('AURA'))===2,'earned cosmetics can be equipped');
+ for(const [choice,invalidValue,fallback] of [['CLEAR EFFECT',10,1],['BLOCK SKIN',9,1],['AURA',7,0]]){
+  set(choice,invalidValue);run('validate cosmetics');assert(Number(get(choice))===fallback,'new locked '+choice.toLowerCase()+' cannot be equipped');
+ }
+ const unlockGuardNames=['SCORE','LINES','COMBO','THEME','CLEAR EFFECT','BLOCK SKIN','AURA',...progressNames,...historyLists];
+ const beforeUnlock=JSON.stringify(unlockGuardNames.map(name=>get(name)));run('unlock all');
+ assert(get('unlocked').length===50&&get('unlocked').every(x=>Number(x)===1),'U unlock procedure grants all fifty achievements');
+ assert(JSON.stringify(unlockGuardNames.map(name=>get(name)))===beforeUnlock,'unlocking all cosmetics does not award points, fabricate history or change the selected cosmetics');
+ for(const [choice,values] of [['CLEAR EFFECT',Array.from({length:10},(_,i)=>i+1)],['BLOCK SKIN',Array.from({length:9},(_,i)=>i+1)],['AURA',Array.from({length:8},(_,i)=>i)]]){
+  for(const value of values){set(choice,value);run('validate cosmetics');assert(Number(get(choice))===value,'unlocked '+choice.toLowerCase()+' '+value+' can be selected');}
+ }
+ set('BLOCK SKIN',4);set('AURA',2);
  set('SHAKE',999);set('game r',-4);set('game g',999);set('key b',51.9);run('clamp settings');assert(Number(get('SHAKE'))===100&&Number(get('game r'))===0&&Number(get('game g'))===255&&Number(get('key b'))===51,'slider values are safely clamped to valid integer ranges');
  set('name draft','Nova_12!✨');run('sanitize name');assert(get('PLAYER NAME')==='Nova_12','name entry keeps supported letters and numbers');
  set('name draft','abcdefghijklmnop');run('sanitize name');assert(get('PLAYER NAME').length===12,'names are limited to twelve displayable characters');
  set('name draft','!!!');run('sanitize name');assert(get('PLAYER NAME')==='PLAYER','empty or unsupported names use a visible default');
- set('name draft','Nova_12');run('sanitize name');set('SHAKE',75);set('DIFFICULTY',3);set('CLEAR EFFECT',5);set('game r',12);set('game g',90);set('game b',210);set('key r',255);set('key g',42);set('key b',90);set('game custom',1);set('key custom',1);set('BEST SCORE',5432);
- const profileHistory=JSON.stringify(historyLists.map(name=>get(name)));run('save profile');
+ const colorNames=['game r','game g','game b','key r','key g','key b'];
+ [12,90,210,255,42,90].forEach((value,index)=>set(colorNames[index],value));
+ set('game custom',1);set('key custom',1);run('update rainbow');
+ const drawnColorNames=['game draw r','game draw g','game draw b','key draw r','key draw g','key draw b'];
+ assert(drawnColorNames.every((name,index)=>Number(get(name))===Number(get(colorNames[index]))),'solid accent and key colors use the exact chosen RGB values');
+ const storedColors=JSON.stringify(colorNames.map(name=>get(name)));
+ set('game custom',2);set('key custom',2);clock.projectTimer=()=>0;run('update rainbow');
+ const rainbowStart=JSON.stringify(drawnColorNames.map(name=>get(name)));
+ clock.projectTimer=()=>0.731;run('update rainbow');
+ assert(JSON.stringify(drawnColorNames.map(name=>get(name)))!==rainbowStart&&drawnColorNames.every(name=>Number.isFinite(Number(get(name)))&&Number(get(name))>=0&&Number(get(name))<=255),'rainbow accent and key colors animate within valid RGB channels');
+ assert(JSON.stringify(colorNames.map(name=>get(name)))===storedColors,'rainbow animation preserves the player’s saved solid RGB colors');
+ clock.projectTimer=originalTimer;
+ set('name draft','Nova_12');run('sanitize name');set('SHAKE',75);set('DIFFICULTY',5);set('CLEAR EFFECT',10);set('BEST SCORE',5432);
+ run('checkpoint run');const profileHistory=JSON.stringify(historyLists.map(name=>get(name)));run('save profile');
  assert(get('saved profile').length===15&&Number(get('profile saved'))===1&&get('settings notice')==='saved','Save Profile commits a versioned snapshot and shows confirmation');
  const profileSnapshot=JSON.stringify(get('saved profile'));set('PLAYER NAME','Changed');set('SHAKE',0);set('DIFFICULTY',1);set('game r',0);set('BLOCK SKIN',1);run('load profile');
- assert(get('PLAYER NAME')==='Nova_12'&&Number(get('SHAKE'))===75&&Number(get('DIFFICULTY'))===3&&Number(get('CLEAR EFFECT'))===5,'Load Profile restores the saved name and gameplay settings');
- assert(Number(get('game r'))===12&&Number(get('key r'))===255&&Number(get('key custom'))===1&&Number(get('BLOCK SKIN'))===4,'Load Profile restores exact RGB and earned cosmetic choices');
+ assert(get('PLAYER NAME')==='Nova_12'&&Number(get('SHAKE'))===75&&Number(get('DIFFICULTY'))===5&&Number(get('CLEAR EFFECT'))===10,'Load Profile restores the saved name, Nightmare difficulty and expanded effect choice');
+ assert(Number(get('game r'))===12&&Number(get('key r'))===255&&Number(get('game custom'))===2&&Number(get('key custom'))===2&&Number(get('BLOCK SKIN'))===4,'Load Profile restores stored RGB, rainbow modes and earned cosmetic choices');
  assert(JSON.stringify(historyLists.map(name=>get(name)))===profileHistory&&get('unlocked').every(x=>Number(x)===1),'loading settings preserves score history and unlocked rewards');
- set('settings tab',2);run('render settings');const rgbPen=t.getCustomState('Scratch.pen').penAttributes.color4f.slice(0,3).map(x=>Math.round(x*255));
+ set('key custom',1);run('update rainbow');set('settings tab',2);run('render settings');const rgbPen=t.getCustomState('Scratch.pen').penAttributes.color4f.slice(0,3).map(x=>Math.round(x*255));set('key custom',2);
  // Scratch converts RGB through HSV and can truncate a channel by one unit.
  assert(rgbPen.every((v,i)=>Math.abs(v-[255,42,90][i])<=1),'rendered RGB matches selected key channels within Scratch rounding');
- assert(costumes.filter(c=>c.name.startsWith('element')&&!c.name.startsWith('element spark')).length===50,'five selectable clear effects each include ten animation frames');
- assert(costumes.filter(c=>c.name.startsWith('skin')).length===42,'three earned skins include every block and ghost color');
- assert(costumes.filter(c=>c.name.startsWith('aura')).length===16,'two earned auras include eight animation frames each');
+ assert(costumes.filter(c=>c.name.startsWith('element')&&!c.name.startsWith('element spark')).length===100,'ten selectable clear effects each include ten animation frames');
+ assert(costumes.filter(c=>c.name.startsWith('skin')).length===112,'eight earned skins include every block and ghost color');
+ assert(costumes.filter(c=>c.name.startsWith('aura')).length===56,'seven earned auras include eight animation frames each');
+ assert(costumes.filter(c=>/^achievement\d+-[01]$/.test(c.name)).length===100,'all fifty achievement cards include distinct locked and unlocked states');
+ const beam=costumes.find(c=>c.name==='element5-0');
+ assert(Boolean(beam)&&beam.rotationCenterX===80&&beam.rotationCenterY===16,'the expanded rainbow beam is centered on a full row and twice the normal height');
+ const beamSvg=beam?Buffer.from(beam.asset.data).toString('utf8'):'';
+ assert(/\bwidth=["']160["']/.test(beamSvg)&&/\bheight=["']32["']/.test(beamSvg),'rainbow clear artwork spans the complete 160-pixel row with a 32-pixel burst');
+ for(let tab=1;tab<=3;tab++){
+  set('cosmetics tab',tab);set('SCREEN','cosmetics');const before=beeState();run('render cosmetics');
+  assert(get('SCREEN')==='cosmetics'&&Number(get('cosmetics tab'))===tab&&beeState()===before,'Cosmetics tab '+tab+' renders without affecting gameplay or history');
+ }
+ for(let page=0;page<=8;page++){
+  set('achievement page',page);set('SCREEN','achievements');const before=beeState();run('render achievements');
+  assert(Number(get('achievement page'))===page&&beeState()===before,'achievement page '+(page+1)+' renders without changing the current run');
+ }
  // Saving the .sb3 must carry personal history into a fresh Scratch VM as well.
  const exportedProject=await vm.saveProjectSb3();
  const restoredVm=new VM();restoredVm.attachStorage(new ScratchStorage());

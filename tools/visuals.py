@@ -1,4 +1,4 @@
-"""Original vector artwork for Stack / Flow's competitive Scratch layout."""
+"""Original vector artwork for Tetris Vnanzero Edition's Scratch layout."""
 from html import escape
 
 THEME_NAMES = ['Galaxy', 'Mountains', 'Ocean', 'Sunset', 'Neon City', 'Black', 'Sakura', 'Volcano', 'Aurora', 'Blueprint']
@@ -16,6 +16,8 @@ THEME_PALETTES += [
     ['#75f0d7', '#729fe9', '#b9d8a1', '#ecedaf', '#65d5a6', '#bf9fe7', '#e5a3d4'],
     ['#b0edff', '#7ab8ef', '#d0e4f6', '#f5fcff', '#7cd4e9', '#a4bde7', '#a0d9dc'],
 ]
+THEME_NAMES.append('Beeswarm Sim Theme')
+THEME_PALETTES.append(['#f8d978','#7dc4e9','#ed9a65','#fff0a2','#92d58a','#b49ce2','#e98f9c'])
 COLORS = THEME_PALETTES[0]
 
 
@@ -62,6 +64,8 @@ def block(c, ghost=False, theme=1):
             body += '<path d="M8 8Q3 8 4 4Q8 3 8 8Q8 3 12 4Q13 8 8 8Q13 8 12 12Q8 13 8 8Q8 13 4 12Q3 8 8 8Z" fill="#fff" opacity=".22"/><circle cx="8" cy="8" r=".7" fill="#fff" opacity=".65"/>'
         elif theme == 8:
             body += '<path d="M1 12L5 9L4 5L9 3L11 1 M5 9L10 10L13 14 M9 3L14 6" fill="none" stroke="#3f1721" stroke-width="1.2" opacity=".5"/><path d="M1 12L5 9L4 5L9 3L11 1" fill="none" stroke="#fff0a0" stroke-width=".4" opacity=".7"/>'
+        elif theme == 11:
+            body += '<path d="M8 2L13 5V11L8 14L3 11V5Z" fill="none" stroke="#fff0b1" stroke-width=".8" opacity=".7"/>'
         elif theme == 9:
             body += '<path d="M1 11Q4 2 8 8T15 4 M1 14Q4 5 8 11T15 7" fill="none" stroke="#fff" opacity=".28" stroke-width="1.1"/>'
     return svg(body, 16, 16)
@@ -83,8 +87,8 @@ def arena():
         '<path d="M159 19V341H321V19" stroke="#e0e0e5" stroke-width="1.25" fill="none"/>',
         '<path d="M160 20H320" stroke="#fff" stroke-opacity=".15" stroke-width=".5"/>',
         '<path d="M156 332V344H169 M311 344H324V332" fill="none" stroke="#a998d1" stroke-width=".7" stroke-opacity=".6"/>',
-        text(24, 34, 'STACK / FLOW', 14, '#f3f3f5', 900, 'letter-spacing="1" textLength="112" lengthAdjust="spacingAndGlyphs"'),
-        text(24, 49, 'MARATHON', 9, '#aaa7bb', 700, 'letter-spacing="2.5"'),
+        text(24, 34, 'TETRIS', 14, '#f3f3f5', 900, 'letter-spacing="1" textLength="112" lengthAdjust="spacingAndGlyphs"'),
+        text(24, 49, 'VNANZERO EDITION', 7, '#aaa7bb', 700, 'letter-spacing=".8"'),
         text(134, 121, 'HOLD', 11, '#f0eff5', 800, 'text-anchor="end" letter-spacing="1.2"'),
         text(24, 65, 'COMBO', 9, '#aaa7bb', 300, 'letter-spacing="1.8"'),
         rect(24, 89, 110, 2, '#77708c', extra='fill-opacity=".28"'),
@@ -116,7 +120,7 @@ def gameover():
         rect(0, 0, 160, 320, '#09070f', extra='fill-opacity=".9"')
         + '<path d="M0 106H160 M0 213H160" stroke="#b693ef" stroke-opacity=".55" stroke-width=".7"/>'
         + rect(0, 107, 160, 105, '#19131f', extra='fill-opacity=".94"')
-        + text(80, 128, 'STACK / FLOW', 7, '#a198b6', 800, 'text-anchor="middle" letter-spacing="2"')
+        + text(80, 128, 'TETRIS', 7, '#a198b6', 800, 'text-anchor="middle" letter-spacing="2"')
         + text(80, 151, 'GAME', 23, '#f9f6ff', 900, 'text-anchor="middle" letter-spacing="1"')
         + text(80, 175, 'OVER', 23, '#f9f6ff', 900, 'text-anchor="middle" letter-spacing="1"')
         + text(80, 198, 'RUN SAVED', 8, '#cdb6ed', 300, 'text-anchor="middle" letter-spacing=".6"'),
@@ -190,7 +194,10 @@ def _pine(x, y, scale=1, color='#0b2330'):
 
 def landscape(theme=1):
     """Full-stage 480x360 original landscape, selected independently of camera shake."""
-    theme = max(1, min(10, int(theme)))
+    theme = max(1, min(11, int(theme)))
+    if theme == 11:
+        from expansion_art import beeswarm_landscape
+        return beeswarm_landscape()
     if theme == 1:
         b = [_sky('#050919', '#1c1238')]
         b += ['<defs><radialGradient id="nebula"><stop stop-color="#813ca7" stop-opacity=".34"/><stop offset="1" stop-color="#4a2676" stop-opacity="0"/></radialGradient><radialGradient id="blue"><stop stop-color="#2d76b9" stop-opacity=".32"/><stop offset="1" stop-color="#184666" stop-opacity="0"/></radialGradient><linearGradient id="planet" x2="1" y2="1"><stop stop-color="#8667bb"/><stop offset=".5" stop-color="#34436c"/><stop offset="1" stop-color="#121a35"/></linearGradient></defs>', '<ellipse cx="95" cy="198" rx="225" ry="96" fill="url(#nebula)" transform="rotate(-30 95 198)"/><ellipse cx="367" cy="202" rx="166" ry="91" fill="url(#blue)" transform="rotate(-30 367 202)"/>', _stars(1, 112)]
@@ -288,22 +295,22 @@ def landscape(theme=1):
         for y in range(0,361,16):b.append(f'<path d="M0 {y}H480" stroke="#70b2d5" opacity="{.19 if y%80==0 else .075}" stroke-width=".5"/>')
         b += ['<g fill="none" stroke="#9bd8ec" stroke-width=".65" opacity=".45"><circle cx="76" cy="116" r="46"/><circle cx="76" cy="116" r="35"/><path d="M17 116H135 M76 57V175 M39 79L113 153 M39 153L113 79"/><path d="M382 55h64v93h-64z M390 63h48v77h-48z M382 80h64 M414 55v93 M374 55v93 M370 55h8 M370 148h8 M382 156h64 M382 152v8 M446 152v8"/><path d="M18 264h102v62H18z M28 274h82v42H28z M18 294h102 M52 264v62 M18 256h102 M18 252v8 M120 252v8"/><path d="M376 256l33-39 49 33-22 54-60-9z M376 256l60 48 M409 217l-6 70 M458 250l-82 45"/></g>',
               '<g fill="#b1e4f1" opacity=".58">'+''.join(f'<circle cx="{x}" cy="{y}" r="1.6"/>' for x,y in [(76,70),(76,162),(30,116),(122,116),(382,55),(446,148),(18,264),(120,326),(376,256),(409,217),(436,304)])+'</g>',
-              text(360, 334, 'FLOW / 010', 7, '#9bd0e2', 300, 'letter-spacing="2"')]
+              text(360, 334, 'VNANZERO / 010', 7, '#9bd0e2', 300, 'letter-spacing="2"')]
     return svg(''.join(b))
 
 
 
 def menu(theme=1, resume=False):
     """Asymmetric flight-console menu; the engine stamps the hover object at right."""
-    theme = max(1, min(10, int(theme)))
+    theme = max(1, min(11, int(theme)))
     accent = THEME_PALETTES[theme-1][5]
     b = [
         '<defs><linearGradient id="menu-veil"><stop stop-color="#060912" stop-opacity=".98"/><stop offset=".62" stop-color="#080c17" stop-opacity=".86"/><stop offset="1" stop-color="#080c17" stop-opacity=".18"/></linearGradient></defs>',
         rect(0, 0, 480, 360, '#040810', extra='fill-opacity=".36"'),
         rect(0, 0, 305, 360, 'url(#menu-veil)'),
         '<path d="M16 31V15H53 M427 15H464V51 M16 319V345H53 M427 345H464V309" fill="none" stroke="#c4d3e9" stroke-opacity=".26" stroke-width=".6"/>',
-        text(32, 59, 'STACK', 34, '#f3f4ff', 200, 'letter-spacing="4"'),
-        text(34, 86, '/ FLOW', 22, '#acb6ce', 200, 'letter-spacing="5.7"'),
+        text(32, 59, 'TETRIS', 31, '#f3f4ff', 200, 'letter-spacing="4"'),
+        text(34, 86, 'VNANZERO EDITION', 10, '#acb6ce', 200, 'letter-spacing="1.3"'),
         f'<path d="M195 43H244 M211 50H244 M228 57H244" stroke="{accent}" opacity=".48" stroke-width=".7"/>',
         '<path d="M32 98H246 M21 119V268" stroke="#a7b8d4" stroke-opacity=".2" stroke-width=".6"/>',
     ]
@@ -330,6 +337,7 @@ def menu(theme=1, resume=False):
     ]
     for x,w,label in [(270,88,'SETTINGS'),(364,104,'ACHIEVEMENTS')]:
         b += [rect(x,300,w,28,'#10182a','#7790af',3,extra='fill-opacity=".94" stroke-width=".6"'),text(x+w/2,317,label,7.1,'#d4e3fa',300,'text-anchor="middle" letter-spacing=".7"')]
+    b += [rect(270,266,198,24,'#10182a','#91a9d0',3,extra='fill-opacity=".94" stroke-width=".7"'),text(369,282,'COSMETICS',8,'#d9e7ff',300,'text-anchor="middle" letter-spacing="1"')]
     return svg(''.join(b))
 
 
@@ -409,31 +417,31 @@ def _back_button():
 
 
 def theme_menu(theme=1):
-    """Ten independently illustrated cards in two rows; root owns selection input."""
-    theme = max(1,min(10,int(theme)))
+    """Eleven independently illustrated cards; root owns selection input."""
+    theme = max(1,min(11,int(theme)))
     b = [rect(0,0,480,360,'#070b16',extra='fill-opacity=".93"'),_back_button(),
          text(240,64,'CHOOSE YOUR WORLD',22,'#f2f3fc',200,'text-anchor="middle" letter-spacing="2.3"')]
     for i,name in enumerate(THEME_NAMES,1):
-        x=12+((i-1)%5)*94;y=96+((i-1)//5)*74
+        x=12+((i-1)%4)*116;y=86+((i-1)//4)*70
         accent=THEME_PALETTES[i-1][5]
         selected=i==theme
-        b += [rect(x-1,y-1,82,64,'#171728' if selected else '#0e1420',accent if selected else '#424c63',3,
+        b += [rect(x-1,y-1,108,64,'#171728' if selected else '#0e1420',accent if selected else '#424c63',3,
                    extra=f'stroke-opacity="{.95 if selected else .65}" stroke-width="{1.1 if selected else .55}"')]
         art=landscape(i);art=art[art.index('>')+1:art.rfind('</svg>')]
         # Each miniature has a private SVG definition namespace.
         art=art.replace('id="','id="thumb'+str(i)+'-').replace('url(#','url(#thumb'+str(i)+'-')
-        b += [f'<defs><clipPath id="clip{i}"><rect x="{x}" y="{y}" width="80" height="40" rx="2"/></clipPath></defs>',
-              f'<g clip-path="url(#clip{i})"><g transform="translate({x} {y}) scale(.1666666667 .1111111111)">{art}</g></g>',
-              text(x+40,y+51,name.upper(),6.9,'#ffffff' if selected else '#b6c0d4',300,'text-anchor="middle" letter-spacing=".25"')]
+        b += [f'<defs><clipPath id="clip{i}"><rect x="{x}" y="{y}" width="106" height="40" rx="2"/></clipPath></defs>',
+              f'<g clip-path="url(#clip{i})"><g transform="translate({x} {y}) scale(.2208333333 .1111111111)">{art}</g></g>',
+              text(x+53,y+51,name.upper(),6.9,'#ffffff' if selected else '#b6c0d4',300,'text-anchor="middle" letter-spacing=".25"')]
         for j,c in enumerate(THEME_PALETTES[i-1]):
-            b += [rect(x+7+j*9.6,y+56,8.3,2,c)]
+            b += [rect(x+7+j*13.0,y+56,11.5,2,c)]
         if selected:
-            b += [rect(x+66,y+3,10,10,'#0c1320',accent,2,extra='stroke-width=".5"'),
-                  f'<path d="M{x+68} {y+8}l2 2 4-5" fill="none" stroke="{accent}" stroke-width="1"/>']
+            b += [rect(x+92,y+3,10,10,'#0c1320',accent,2,extra='stroke-width=".5"'),
+                  f'<path d="M{x+94} {y+8}l2 2 4-5" fill="none" stroke="{accent}" stroke-width="1"/>']
     accent=THEME_PALETTES[theme-1][5]
-    b += ['<path d="M24 258H345 M24 333H345" stroke="#a6b7d5" opacity=".13" stroke-width=".6"/>',
-          text(24,286,'SELECTED THEME',6.7,'#7d8da9',300,'letter-spacing="1.9"'),
-          text(24,310,THEME_NAMES[theme-1].upper(),16,accent,200,'letter-spacing="2"'),
+    b += ['<path d="M24 300H350 M24 351H350" stroke="#a6b7d5" opacity=".13" stroke-width=".6"/>',
+          text(24,317,'SELECTED THEME',6.7,'#7d8da9',300,'letter-spacing="1.9"'),
+          text(24,339,THEME_NAMES[theme-1].upper(),16,accent,200,'letter-spacing="2"'),
           '<ellipse cx="410" cy="298" rx="49" ry="29" fill="none" stroke="#bed2e8" stroke-opacity=".17" stroke-width=".6" transform="rotate(-32 410 298)"/>',
           f'<path d="M410 247A51 51 0 0 1 455 274 M365 322A51 51 0 0 0 410 349" stroke="{accent}" stroke-opacity=".35" stroke-width=".7" fill="none"/>']
     return svg(''.join(b))

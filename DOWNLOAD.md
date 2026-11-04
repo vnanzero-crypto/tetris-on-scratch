@@ -1,31 +1,27 @@
-# Download and play
+# Download Tetris Vnanzero Edition
 
-1. Open [stack-flow.sb3](https://github.com/vnanzero-crypto/tetris-on-scratch/blob/main/stack-flow.sb3).
+1. Open [tetris-vnanzero-edition.sb3](https://github.com/vnanzero-crypto/tetris-on-scratch/blob/main/tetris-vnanzero-edition.sb3).
 2. Click **Download raw file** (the down-arrow button).
-3. Open https://scratch.mit.edu/projects/editor/ .
-4. Choose **File → Load from your computer** and select the downloaded `.sb3` file.
-5. Click the green flag, open Themes to choose a theme, and click **Play**.
+3. Open [the Scratch editor](https://scratch.mit.edu/projects/editor/).
+4. Choose **File → Load from your computer** and select the downloaded `.sb3`.
+5. Click the green flag, then **Play**, and choose Easy, Normal, Hard, Expert, or Nightmare.
 
-## Controls and menu
+The older `stack-flow.sb3` link contains the same game. To update an older copy in Scratch, load the new file; downloading it does not update an already loaded project.
 
-**A/D or Left/Right** move · **S or Down** soft drop · **W or Up** rotate clockwise · **Z** rotate counterclockwise · **Space** hard drop · **C** hold · **R** restart.
+## Controls and menus
 
-Press **M** or click the top-left **Menu** button to return at any time. The menu pauses the run and combo countdown. **Resume** continues; **New Run** starts over. In the menu, **Space** plays/resumes and **N** starts a new run.
+**A/D or Left/Right** move · **S or Down** soft drop · **W or Up** rotate · **Z** rotates the other way · **Space** hard drops · **C** holds · **R** opens the new-run picker.
 
-Open **Themes** from the main menu for ten unique looks: Galaxy, Mountains, Ocean, Sunset, Neon City, Black, Sakura, Volcano, Aurora, and Blueprint. The theme gallery supports **1–9 / 0** and T to cycle. On-screen control hints are hidden; the live input shows only the four arrows in a keyboard layout. Combos appear in the sidebar with names such as 3 NICE!, 5 GREAT!, and 7 CRAZY!, through 15 BEYOND LIMITS!.
+Press **M** or click **Menu** to pause and return to the main menu. **Resume** continues the same run immediately. **New Run** asks for a difficulty before restarting. The combo timer pauses in the menu.
 
-Menus now have animated hover objects, and decorative particles float around the screen. SINGLE/DOUBLE/TRIPLE/QUAD and T-SPIN captions appear in the sidebar; generic menu slogans have been removed.
+**Cosmetics** contains 10 clear effects, nine block styles, and seven auras plus None. Press **U** to unlock every cosmetic and all 50 achievements immediately; it leaves scores and progress counts unchanged. Open **Achievements** to see the requirements and rewards.
 
-## Keep your scores
+**RGB / Rainbow** in Cosmetics opens independent game-accent and key-highlight colors. Use the sliders, type exact RGB channel values, or choose animated Rainbow for either. **Settings** includes your name, shake intensity/Off, and preferred difficulty.
 
-Open **Run History** from the main menu to compare your newest 20 runs and personal best. Scores survive **Stop** and restarting with the green flag. **Save your own Scratch project or download the played `.sb3` before closing Scratch** to retain that history later. Loading a fresh download replaces the existing project's saved history.
+**Themes** has eleven unique looks, including **Beeswarm Sim Theme**. Each line cleared adds a flying bee, up to ten, along the edges outside gameplay. Choose a card, use **1–9 / 0 / B**, or press **T** to cycle inside the gallery.
 
-If you have the old version in Scratch, load the new `.sb3` file to replace it. Downloading a new file does not automatically update a previously saved Scratch project.
+## Keep your scores and preferences
 
-## New settings and rewards
+**Run History** compares your newest 20 runs and personal best. **Save Profile** commits your name, settings, and equipped cosmetics, shows a confirmation, and restores that snapshot on the next green flag. Scores and achievements are recorded independently. All of this survives **Stop** and restarting with the green flag in the loaded project.
 
-Open **Settings** for your name, shake slider/Off, Easy/Normal/Hard difficulty, independent game-accent and key-highlight RGB, clear effects, and earned cosmetics. Click RGB numbers to type precise values. **Save Profile** commits your preferences and shows a confirmation; it restores them on the green flag.
-
-Open **Achievements** for six earnable rewards: Ember, Frost and Prism blocks, Gold and Rainbow auras, and the Spin Artist title. Choose Normal, Fire, Water, Ice or Rainbow clears in Settings.
-
-The profile, scores and rewards are project data. **Save your Scratch project or download the played `.sb3` before closing Scratch** to preserve them beyond the current loaded project.
+**Save your own Scratch project or download the played `.sb3` before closing Scratch** to preserve the data later. Save Profile stores project data; it does not silently save your account or write a Windows file. Loading a fresh original download replaces the current project’s history and profile.
