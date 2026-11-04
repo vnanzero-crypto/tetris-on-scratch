@@ -74,7 +74,7 @@ const fs=require('fs');
  assert(Number(get('COMBO'))===1&&Number(get('combo bonus'))===0&&Number(get('SCORE'))===100,'first clear starts combo at one without an extra bonus');
  assert(Number(get('combo expires'))===14,'combo window expires four seconds after the latest clear');
  assert(Number(get('shake ticks'))===10,'line clear starts a short camera shake');
- let movedCamera=false;
+ set('SHAKE',20);let movedCamera=false;
  for(let frame=0;frame<11;frame++){
   run('update camera');const sx=Number(get('shake x')),sy=Number(get('shake y'));
   assert(Math.abs(sx)<=2&&Math.abs(sy)<=2,`camera shake stays within two pixels on frame ${frame}`);
@@ -157,7 +157,7 @@ const fs=require('fs');
  assert(comboName(3)==='NICE!'&&comboName(5)==='GREAT!'&&comboName(7)==='CRAZY!','requested combo milestones are Nice, Great and Crazy');
  assert(comboName(15)==='BEYOND LIMITS!','fifteenth combo has the final milestone name');
  // History lives in ordinary Scratch lists, independent of transient board resets.
- const historyLists=['run ids','run scores','run lines','run combos','run themes','run status'];
+ const historyLists=['run ids','run scores','run lines','run combos','run themes','run status','run difficulties'];
  for(const name of historyLists)set(name,[]);
  set('run record open',0);set('run serial',0);set('BEST SCORE',0);set('has game',0);
  run('start game');set('THEME',7);set('SCORE',1234);set('LINES',12);set('run max combo',5);run('checkpoint run');
@@ -257,6 +257,40 @@ const fs=require('fs');
  assert(presentationState()===beforePresentation,'hover detection and animated previews preserve the board, bag, score, combos and saved runs');
  set('SCREEN','menu');
 
+ // Settings and progression are independent from per-run resets.
+ run('init profile');
+ set('SHAKE',0);set('shake ticks',10);run('update camera');assert(Number(get('shake x'))===0&&Number(get('shake y'))===0,'shake Off produces no camera offset');
+ set('SHAKE',100);set('shake ticks',10);run('update camera');assert(Math.abs(Number(get('shake x')))===8&&Math.abs(Number(get('shake y')))<=4,'maximum shake is stronger and bounded at eight pixels');
+ set('DIFFICULTY',1);run('apply difficulty');assert(Number(get('gravity base'))===60&&Number(get('lock limit'))===35,'Easy uses slower gravity and longer lock delay');
+ set('DIFFICULTY',2);run('apply difficulty');assert(Number(get('gravity base'))===35&&Number(get('lock limit'))===25,'Normal preserves familiar timing');
+ set('DIFFICULTY',3);run('apply difficulty');assert(Number(get('gravity base'))===15&&Number(get('lock limit'))===12,'Hard uses faster gravity and shorter lock delay');
+ set('unlocked',Array(6).fill(0));set('BLOCK SKIN',4);set('AURA',2);run('validate cosmetics');assert(Number(get('BLOCK SKIN'))===1&&Number(get('AURA'))===0,'locked cosmetics cannot be equipped');
+ set('lifetime lines',0);set('lifetime quads',0);set('lifetime spins',0);set('run max combo',0);set('BEST SCORE',0);run('check achievements');assert(get('unlocked').every(x=>Number(x)===0),'achievement menu does not grant rewards without progress');
+ set('lifetime lines',1);run('check achievements');assert(Number(get('unlocked')[0])===1,'first line unlocks Ember blocks');
+ set('lifetime lines',10);run('check achievements');assert(Number(get('unlocked')[1])===1,'ten lifetime lines unlock Frost blocks');
+ set('run max combo',5);run('check achievements');assert(Number(get('unlocked')[2])===1,'five combo unlocks Prism blocks');
+ set('lifetime quads',1);run('check achievements');assert(Number(get('unlocked')[3])===1,'a four-line clear unlocks Gold aura');
+ set('lifetime spins',1);run('check achievements');assert(Number(get('unlocked')[4])===1,'a T-spin unlocks the Spin Artist title');
+ set('BEST SCORE',5000);run('check achievements');assert(Number(get('unlocked')[5])===1,'five thousand points unlocks Rainbow aura');
+ set('run max combo',0);set('lifetime lines',0);run('check achievements');assert(get('unlocked').every(x=>Number(x)===1),'earned achievements never relock');
+ set('BLOCK SKIN',4);set('AURA',2);run('validate cosmetics');assert(Number(get('BLOCK SKIN'))===4&&Number(get('AURA'))===2,'earned cosmetics can be equipped');
+ set('SHAKE',999);set('game r',-4);set('game g',999);set('key b',51.9);run('clamp settings');assert(Number(get('SHAKE'))===100&&Number(get('game r'))===0&&Number(get('game g'))===255&&Number(get('key b'))===51,'slider values are safely clamped to valid integer ranges');
+ set('name draft','Nova_12!✨');run('sanitize name');assert(get('PLAYER NAME')==='Nova_12','name entry keeps supported letters and numbers');
+ set('name draft','abcdefghijklmnop');run('sanitize name');assert(get('PLAYER NAME').length===12,'names are limited to twelve displayable characters');
+ set('name draft','!!!');run('sanitize name');assert(get('PLAYER NAME')==='PLAYER','empty or unsupported names use a visible default');
+ set('name draft','Nova_12');run('sanitize name');set('SHAKE',75);set('DIFFICULTY',3);set('CLEAR EFFECT',5);set('game r',12);set('game g',90);set('game b',210);set('key r',255);set('key g',42);set('key b',90);set('game custom',1);set('key custom',1);set('BEST SCORE',5432);
+ const profileHistory=JSON.stringify(historyLists.map(name=>get(name)));run('save profile');
+ assert(get('saved profile').length===15&&Number(get('profile saved'))===1&&get('settings notice')==='saved','Save Profile commits a versioned snapshot and shows confirmation');
+ const profileSnapshot=JSON.stringify(get('saved profile'));set('PLAYER NAME','Changed');set('SHAKE',0);set('DIFFICULTY',1);set('game r',0);set('BLOCK SKIN',1);run('load profile');
+ assert(get('PLAYER NAME')==='Nova_12'&&Number(get('SHAKE'))===75&&Number(get('DIFFICULTY'))===3&&Number(get('CLEAR EFFECT'))===5,'Load Profile restores the saved name and gameplay settings');
+ assert(Number(get('game r'))===12&&Number(get('key r'))===255&&Number(get('key custom'))===1&&Number(get('BLOCK SKIN'))===4,'Load Profile restores exact RGB and earned cosmetic choices');
+ assert(JSON.stringify(historyLists.map(name=>get(name)))===profileHistory&&get('unlocked').every(x=>Number(x)===1),'loading settings preserves score history and unlocked rewards');
+ set('settings tab',2);run('render settings');const rgbPen=t.getCustomState('Scratch.pen').penAttributes.color4f.slice(0,3).map(x=>Math.round(x*255));
+ // Scratch converts RGB through HSV and can truncate a channel by one unit.
+ assert(rgbPen.every((v,i)=>Math.abs(v-[255,42,90][i])<=1),'rendered RGB matches selected key channels within Scratch rounding');
+ assert(costumes.filter(c=>c.name.startsWith('element')&&!c.name.startsWith('element spark')).length===50,'five selectable clear effects each include ten animation frames');
+ assert(costumes.filter(c=>c.name.startsWith('skin')).length===42,'three earned skins include every block and ghost color');
+ assert(costumes.filter(c=>c.name.startsWith('aura')).length===16,'two earned auras include eight animation frames each');
  // Saving the .sb3 must carry personal history into a fresh Scratch VM as well.
  const exportedProject=await vm.saveProjectSb3();
  const restoredVm=new VM();restoredVm.attachStorage(new ScratchStorage());
@@ -264,6 +298,8 @@ const fs=require('fs');
  const restored=restoredVm.runtime.targets.find(target=>target.sprite.name==='Engine');
  assert(historyLists.every(name=>JSON.stringify(restored.variables[name].value)===JSON.stringify(get(name))),'saving and reloading the Scratch project preserves every run-history column');
  assert(Number(restored.variables['BEST SCORE'].value)===5432&&Number(restored.variables['run serial'].value)===Number(get('run serial')),'saved project reload preserves the lifetime best and next-run identifier');
+ assert(JSON.stringify(restored.variables['saved profile'].value)===profileSnapshot&&restored.variables['PLAYER NAME'].value==='Nova_12','saved profile and typed name survive exporting and reopening the project');
+ assert(restored.variables.unlocked.value.every(x=>Number(x)===1),'unlocked cosmetic achievements survive exporting and reopening the project');
  restoredVm.quit();
  console.log('Scratch VM loaded native project and completed gameplay checks.');
  vm.quit();

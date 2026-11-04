@@ -323,11 +323,13 @@ def menu(theme=1, resume=False):
         f'<path d="M365 101A84 84 0 0 1 438 143 M292 227A84 84 0 0 0 365 269" fill="none" stroke="{accent}" stroke-opacity=".7" stroke-width="1"/>',
         '<path d="M365 89V96 M365 274V281 M269 185H276 M454 185H461" stroke="#a9bed9" stroke-opacity=".5" stroke-width=".6"/>',
         '<circle cx="432" cy="134" r="2" fill="#c7e7f5" opacity=".85"/><circle cx="298" cy="236" r="1.5" fill="#c7e7f5" opacity=".55"/>',
-        '<path d="M326 294H404" stroke="#b1bfd8" stroke-opacity=".2" stroke-width=".6"/>',
-        '<path d="M356 300H374 M362 304H368" stroke="#b1bfd8" stroke-opacity=".35" stroke-width=".6"/>',
+        
+        
         text(32,326,THEME_NAMES[theme-1].upper(),9.4,accent,300,'letter-spacing="1.8"'),
         f'<circle cx="236" cy="321" r="3" fill="{accent}" opacity=".8"/>',
     ]
+    for x,w,label in [(270,88,'SETTINGS'),(364,104,'ACHIEVEMENTS')]:
+        b += [rect(x,300,w,28,'#10182a','#7790af',3,extra='fill-opacity=".94" stroke-width=".6"'),text(x+w/2,317,label,7.1,'#d4e3fa',300,'text-anchor="middle" letter-spacing=".7"')]
     return svg(''.join(b))
 
 
@@ -442,7 +444,7 @@ def history_panel():
     b=[rect(0,0,480,360,'#060b15',extra='fill-opacity=".94"'),_back_button(),
        text(24,76,'RUN HISTORY',24,'#f0f2fa',200,'letter-spacing="2.4"'),
        text(334,44,'PERSONAL BEST',7.5,'#c7b9e4',300,'letter-spacing="1.5"')]
-    for x,label in [(24,'RUN'),(70,'SCORE'),(180,'LINES'),(226,'COMBO'),(282,'THEME / STATUS')]:
+    for x,label in [(24,'RUN'),(70,'SCORE'),(180,'LINES'),(226,'COMBO'),(282,'THEME / STATUS'),(402,'MODE')]:
         b+=[text(x,101,label,7.4,'#8998b6',300,'letter-spacing=".5"')]
     for row in range(5):
         y=107+row*32

@@ -21,3 +21,11 @@ Menus now have animated hover objects, and decorative particles float around the
 Open **Run History** from the main menu to compare your newest 20 runs and personal best. Scores survive **Stop** and restarting with the green flag. **Save your own Scratch project or download the played `.sb3` before closing Scratch** to retain that history later. Loading a fresh download replaces the existing project's saved history.
 
 If you have the old version in Scratch, load the new `.sb3` file to replace it. Downloading a new file does not automatically update a previously saved Scratch project.
+
+## New settings and rewards
+
+Open **Settings** for your name, shake slider/Off, Easy/Normal/Hard difficulty, independent game-accent and key-highlight RGB, clear effects, and earned cosmetics. Click RGB numbers to type precise values. **Save Profile** commits your preferences and shows a confirmation; it restores them on the green flag.
+
+Open **Achievements** for six earnable rewards: Ember, Frost and Prism blocks, Gold and Rainbow auras, and the Spin Artist title. Choose Normal, Fire, Water, Ice or Rainbow clears in Settings.
+
+The profile, scores and rewards are project data. **Save your Scratch project or download the played `.sb3` before closing Scratch** to preserve them beyond the current loaded project.
